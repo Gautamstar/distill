@@ -34,7 +34,9 @@ JOIN_FIELDS = {"store_name", "date"}
 # receipt printing "89,60" had gold "89.60"), so checking price fields alone
 # leaks foreign receipts: scan EVERY annotation text on the receipt for
 # currency markers, plus comma decimals in the gold prices.
-NON_USD = re.compile(r"(€|£|¥|\b(eur|euro|gbp|aed|rp|inr|sgd|myr|php|idr)\b)", re.I)
+# (?![a-z]) instead of a trailing \b: currency codes glued to digits
+# ("AED105.00", "EUR129,75") have no word boundary before the number.
+NON_USD = re.compile(r"(€|£|¥|\b(eur|euro|gbp|aed|rp|inr|sgd|myr|php|idr)(?![a-z]))", re.I)
 COMMA_DECIMAL = re.compile(r"\d,\d{2}(\D|$)")
 
 

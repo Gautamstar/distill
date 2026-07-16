@@ -22,4 +22,5 @@ def main(path: str = "outputs/confidence_results.json"):
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    main(sys.argv[1] if len(sys.argv) > 1 else "outputs/confidence_results.json")

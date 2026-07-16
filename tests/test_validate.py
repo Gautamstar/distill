@@ -3,7 +3,7 @@
 import pytest
 
 from distill.score import _to_float
-from distill.validate import apply_validation, check_arithmetic, CAP
+from distill.validate import apply_validation, check_arithmetic, plausible_date, CAP
 
 
 def fields(sub, tax, tot, conf=1.0):
@@ -80,3 +80,39 @@ def test_apply_validation_leaves_consistent_untouched():
     for k in ("subtotal_price", "tax_price", "total_price"):
         assert f[k]["confidence"] == 1.0
         assert "validation_flag" not in f[k]
+
+
+# ---------- date shape validation ----------
+
+@pytest.mark.parametrize("value", [
+    "12/30/2016", "10.07.13", "08-15-2013", "30-DEC-2016", "04NOV'17",
+    "25 Dec 13", "27/Dec/17", "12 Mar '18 8:54 AM", "9/19/2017",
+    "25/10/2017 14:29", "2/25/12",
+])
+def test_plausible_dates_pass(value):
+    assert plausible_date(value)
+
+
+@pytest.mark.parametrize("value", [
+    "TIME 22:55",     # a time, not a date (HOME HOUSE)
+    "90-102225",      # Costco member number
+    "04/3401929",     # phone number (Tent Jumeirah)
+    "22:55", "STORE #5748",
+])
+def test_non_dates_fail(value):
+    assert not plausible_date(value)
+
+
+def test_apply_validation_caps_bad_date():
+    f = fields("22.04", "0.47", "22.51", conf=1.0)
+    f["date"] = {"value": "TIME 22:55", "confidence": 1.0}
+    f = apply_validation(f)
+    assert f["date"]["confidence"] == CAP
+    assert f["date"]["validation_flag"] == "date_shape"
+
+
+def test_apply_validation_keeps_good_date():
+    f = fields("22.04", "0.47", "22.51", conf=1.0)
+    f["date"] = {"value": "12/30/2016", "confidence": 1.0}
+    f = apply_validation(f)
+    assert f["date"]["confidence"] == 1.0
