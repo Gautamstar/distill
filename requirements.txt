@@ -1,0 +1,9 @@
+# NOTE: torch + torchvision are installed separately (CUDA build) in setup_wsl.sh:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+transformers>=4.49.0
+accelerate
+qwen-vl-utils
+datasets
+pillow
+pydantic>=2.0
+pytest
