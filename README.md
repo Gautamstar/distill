@@ -104,5 +104,3 @@ Setup and run instructions land with Phase 0. The first milestone is a single co
 MIT (planned).
 
 ---
-
-Built as a portfolio project to demonstrate production-grade document AI: extraction, calibrated confidence, human-in-the-loop review, and a real evaluation harness.
