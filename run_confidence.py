@@ -17,6 +17,7 @@ from distill.data import load_wildreceipt_samples
 from distill.extract import extract_samples
 from distill.schema import TARGET_FIELDS
 from distill.score import aggregate, _match
+from distill.validate import apply_validation
 
 
 def main():
@@ -34,7 +35,7 @@ def main():
     t0 = time.time()
     for i, s in enumerate(samples):
         preds = extract_samples(s.image, k=args.k)
-        agg = aggregate(preds, TARGET_FIELDS)
+        agg = apply_validation(aggregate(preds, TARGET_FIELDS))
         row = {"file": s.file_name, "fields": {}}
         for f in TARGET_FIELDS:
             val, conf = agg[f]["value"], agg[f]["confidence"]

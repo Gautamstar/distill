@@ -30,9 +30,11 @@ LABEL_TO_FIELD = {
 JOIN_FIELDS = {"store_name", "date"}
 
 # WildReceipt is internationally sourced; keep only dollar (North American)
-# receipts by excluding those whose price fields carry a non-USD currency marker
-# or a European-style comma decimal (e.g. "20,90").
-NON_USD = re.compile(r"(eur|€|gbp|£|aed|¥)", re.I)
+# receipts. Gold prices are sometimes dot-normalized by annotators (a Vienna
+# receipt printing "89,60" had gold "89.60"), so checking price fields alone
+# leaks foreign receipts: scan EVERY annotation text on the receipt for
+# currency markers, plus comma decimals in the gold prices.
+NON_USD = re.compile(r"(€|£|¥|\b(eur|euro|gbp|aed|rp|inr|sgd|myr|php|idr)\b)", re.I)
 COMMA_DECIMAL = re.compile(r"\d,\d{2}(\D|$)")
 
 
@@ -71,10 +73,13 @@ def _build_gold(rec: dict) -> dict:
     return gold
 
 
-def _is_usd(gold: dict) -> bool:
+def _is_usd(rec: dict, gold: dict) -> bool:
+    for ann in rec.get("annotations", []):
+        if NON_USD.search(str(ann.get("text", ""))):
+            return False
     for f in ("subtotal_price", "tax_price", "total_price"):
         v = gold.get(f)
-        if v and (NON_USD.search(str(v)) or COMMA_DECIMAL.search(str(v))):
+        if v and COMMA_DECIMAL.search(str(v)):
             return False
     return True
 
@@ -85,7 +90,7 @@ def load_wildreceipt_samples(split: str = "test", n: Optional[int] = None,
     samples = []
     for rec in _records(split_file):
         gold = _build_gold(rec)
-        if usd_only and not _is_usd(gold):
+        if usd_only and not _is_usd(rec, gold):
             continue
         img = Image.open(BASE / rec["file_name"]).convert("RGB")
         samples.append(Sample(image=img, gold=gold, file_name=rec["file_name"]))

@@ -11,7 +11,17 @@ PRICE_FIELDS = {"subtotal_price", "tax_price", "total_price"}
 
 
 def _to_float(s):
-    t = re.sub(r"[^\d.]", "", str(s).replace(",", ""))
+    t = re.sub(r"[^\d.,]", "", str(s))
+    if not t:
+        return None
+    # European decimal comma ("89,60"): last comma followed by 1-2 trailing
+    # digits acts as the decimal point; earlier dots/commas are separators.
+    m = re.search(r",(\d{1,2})$", t)
+    if m:
+        head = t[: m.start()].replace(".", "").replace(",", "")
+        t = head + "." + m.group(1)
+    else:
+        t = t.replace(",", "")
     if t.count(".") > 1:                      # keep only the last dot as the decimal
         parts = t.split(".")
         t = "".join(parts[:-1]) + "." + parts[-1]
