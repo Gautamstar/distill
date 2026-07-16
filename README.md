@@ -2,7 +2,7 @@
 
 > Turn messy invoices and receipts into clean, trusted, structured data, with calibrated confidence and human-in-the-loop review. Runs locally.
 
-**Status:** Prototyped on CORD (F1 0.88), then migrated to WildReceipt (North American USD receipts) for Phase 1. Current 5-field zero-shot baseline: F1 0.795. Building confidence scoring next. Local-first, single consumer GPU.
+**Status:** Confidence scoring works. Fields where all k=5 samples agree and validation passes are 94.4% accurate (measured) / ~96.6% (after auditing every disagreement against the source image; the gap is dataset label noise) at 59% auto-accept coverage, vs 54% accuracy on flagged fields. Next: line-item extraction to reclaim coverage, then the review queue. Local-first, single consumer GPU.
 
 ## Overview
 
@@ -78,6 +78,9 @@ Because the pipeline is schema-driven, targeting a new document type is a config
 
 - [x] **Phase 0, vertical slice:** zero-shot extraction on CORD receipts, field-level F1 scoring, error-analysis-driven prompt and parser fixes. Overall F1 0.79 to 0.88 (n=100 test set, no fine-tuning). Per field: total 0.95, subtotal 0.89, tax 0.72.
 - [ ] **Phase 1, core:** full schema, robust structured-output extraction, validation, confidence scoring, baseline eval.
+  - [x] 5-field schema + zero-shot baseline (F1 0.795, n=100 USD test set)
+  - [x] Self-consistency confidence (k=5) + arithmetic and date-shape validation: confident slice 87.1% → 94.4% across three eval-driven iterations
+  - [ ] Line-item extraction (richer arithmetic: items must sum to subtotal; catches consistent digit misreads and reclaims over-flagged coverage)
 - [ ] **Phase 2, differentiators:** confidence calibration, human review queue, tracing and cost, CI eval gate.
 - [ ] **Phase 3, polish:** frontend and demo, deployment, results writeup.
 
@@ -88,7 +91,8 @@ Because the pipeline is schema-driven, targeting a new document type is a config
 | Metric | Target | Current |
 | --- | --- | --- |
 | Field-level F1 (key fields) | > 0.90 | 0.795 on WildReceipt/USD, 5 fields (store 0.82, date 0.80, subtotal 0.74, tax 0.84, total 0.78) |
-| Auto-accept rate at 99% field accuracy | > 60% | TBD (Phase 2) |
+| Auto-accept slice accuracy (conf = 1.0) | > 95% | 94.4% measured, ~96.6% image-audited, at 59.3% coverage |
+| Auto-accept rate at 99% field accuracy | > 60% | in progress (coverage reclaim via line items) |
 | Confidence calibration (ECE) | < 0.05 | TBD (Phase 2) |
 | Median latency per document | < 3s | 6.5s (unoptimized) |
 | Cost per document | $0.00 (local) | $0.00 (local) |
