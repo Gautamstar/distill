@@ -16,9 +16,9 @@ a value that matches no plausible date shape gets flagged too.
 """
 import re
 
-from .score import _to_float
+from .score import _to_float, items_sum
 
-PRICE_FIELDS = ("subtotal_price", "tax_price", "total_price")
+PRICE_FIELDS = ("subtotal_price", "tax_price", "tip_price", "total_price")
 CAP = 0.5   # flagged fields drop below any sane auto-accept threshold
 TOL = 0.015
 
@@ -33,27 +33,42 @@ def plausible_date(value: str) -> bool:
     return any(p.search(str(value)) for p in DATE_SHAPES)
 
 
-def check_arithmetic(fields: dict) -> dict:
-    """Given {field: {value, confidence}}, return set of price fields to flag."""
-    sub = _to_float(fields["subtotal_price"]["value"]) if fields["subtotal_price"]["value"] else None
-    tax = _to_float(fields["tax_price"]["value"]) if fields["tax_price"]["value"] else None
-    tot = _to_float(fields["total_price"]["value"]) if fields["total_price"]["value"] else None
+def _val(fields, name):
+    v = fields.get(name, {}).get("value")
+    return _to_float(v) if v else None
+
+
+def check_arithmetic(fields: dict, line_items=None) -> set:
+    """Given {field: {value, confidence}}, return the set of price fields to flag.
+
+    line_items, when provided, add a second equation: if the item prices sum
+    to the reported subtotal, the subtotal is confirmed and is exculpated from
+    any arithmetic flag (blame shifts to the other fields). Item sums never
+    add flags: real receipts legitimately break them (discounts, deposits).
+    """
+    sub, tax, tot = _val(fields, "subtotal_price"), _val(fields, "tax_price"), _val(fields, "total_price")
+    tip = _val(fields, "tip_price")
 
     flags = set()
-    # All three present: they must add up.
-    if sub is not None and tax is not None and tot is not None:
-        if abs(sub + tax - tot) > TOL:
-            flags.update(PRICE_FIELDS)
-    # Subtotal equal to total with no tax: the known invented-subtotal pattern.
-    elif sub is not None and tot is not None and tax is None:
-        if abs(sub - tot) <= TOL:
-            flags.add("subtotal_price")
+    if sub is not None and tot is not None:
+        if tax is None and tip is None:
+            # Subtotal equal to total with no tax/tip: invented-subtotal pattern.
+            if abs(sub - tot) <= TOL:
+                flags.add("subtotal_price")
+        elif abs(sub + (tax or 0) + (tip or 0) - tot) > TOL:
+            flags.update(f for f in PRICE_FIELDS
+                         if fields.get(f, {}).get("value") is not None)
+
+    if flags and line_items:
+        s = items_sum(line_items)
+        if s is not None and sub is not None and abs(s - sub) <= TOL:
+            flags.discard("subtotal_price")
     return flags
 
 
-def apply_validation(fields: dict) -> dict:
+def apply_validation(fields: dict, line_items=None) -> dict:
     """Cap confidence of fields implicated by a failed check. Mutates and returns."""
-    for f in check_arithmetic(fields):
+    for f in check_arithmetic(fields, line_items=line_items):
         if fields[f]["confidence"] > CAP:
             fields[f]["confidence"] = CAP
             fields[f]["validation_flag"] = "arithmetic"

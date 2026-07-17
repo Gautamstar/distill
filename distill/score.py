@@ -4,10 +4,11 @@ Price fields are compared numerically (dollar amounts, tolerant of $ and commas)
 text fields (store_name, date) are compared as normalized strings.
 """
 import re
+from difflib import SequenceMatcher
 
 from .schema import TARGET_FIELDS
 
-PRICE_FIELDS = {"subtotal_price", "tax_price", "total_price"}
+PRICE_FIELDS = {"subtotal_price", "tax_price", "tip_price", "total_price"}
 
 
 def _to_float(s):
@@ -94,6 +95,37 @@ def score(preds, golds, fields=TARGET_FIELDS) -> dict:
         agg["fp"] += fp
         agg["fn"] += fn
     return {"per_field": per_field, "overall": _prf(agg["tp"], agg["fp"], agg["fn"])}
+
+
+def _name_sim(a, b) -> float:
+    return SequenceMatcher(None, _norm_str(a), _norm_str(b)).ratio()
+
+
+def score_line_items(pred_items, gold_items) -> dict:
+    """Item-level P/R/F1. A predicted item matches a gold item when the prices
+    agree numerically and the descriptions are similar (gold OCR concatenates
+    words, so similarity runs on space-stripped normalized text)."""
+    used = set()
+    tp = 0
+    for g in gold_items:
+        for j, p in enumerate(pred_items):
+            if j in used:
+                continue
+            gp, pp = _to_float(g.get("price")), _to_float(p.get("price"))
+            if gp is None or pp is None or abs(gp - pp) >= 0.01:
+                continue
+            if _name_sim(g.get("description") or "", p.get("description") or "") >= 0.4:
+                used.add(j)
+                tp += 1
+                break
+    return _prf(tp, len(pred_items) - tp, len(gold_items) - tp)
+
+
+def items_sum(items):
+    """Sum of parseable line prices, or None if no line has a parseable price."""
+    vals = [_to_float(i.get("price")) for i in items or []]
+    vals = [v for v in vals if v is not None]
+    return round(sum(vals), 2) if vals else None
 
 
 def aggregate(samples, fields=TARGET_FIELDS) -> dict:

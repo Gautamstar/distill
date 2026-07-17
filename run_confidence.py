@@ -16,8 +16,28 @@ import time
 from distill.data import load_wildreceipt_samples
 from distill.extract import extract_samples
 from distill.schema import TARGET_FIELDS
-from distill.score import aggregate, _match
+from distill.score import aggregate, _match, items_sum, score_line_items
 from distill.validate import apply_validation
+
+
+def vote_line_items(preds):
+    """Self-consistency for line items: majority-vote the SUM of item prices
+    (the scalar validation consumes), then take the item list from a sample in
+    the majority cluster. Returns (items, sum, confidence)."""
+    sums = [items_sum(p.get("line_items")) for p in preds]
+    clusters = []   # [sum_value, count, first_sample_index]
+    for idx, v in enumerate(sums):
+        for c in clusters:
+            same = (v is None and c[0] is None) or \
+                   (v is not None and c[0] is not None and abs(v - c[0]) < 0.01)
+            if same:
+                c[1] += 1
+                break
+        else:
+            clusters.append([v, 1, idx])
+    clusters.sort(key=lambda c: c[1], reverse=True)
+    best_sum, count, rep = clusters[0]
+    return preds[rep].get("line_items") or [], best_sum, count / len(preds)
 
 
 def main():
@@ -31,12 +51,21 @@ def main():
     samples = load_wildreceipt_samples(split=args.split, n=args.n)
     rows = []
     buckets = {"accept": {"correct": 0, "total": 0}, "flag": {"correct": 0, "total": 0}}
+    item_agg = {"tp": 0, "fp": 0, "fn": 0}
 
     t0 = time.time()
     for i, s in enumerate(samples):
         preds = extract_samples(s.image, k=args.k)
-        agg = apply_validation(aggregate(preds, TARGET_FIELDS))
-        row = {"file": s.file_name, "fields": {}}
+        items, isum, iconf = vote_line_items(preds)
+        agg = apply_validation(aggregate(preds, TARGET_FIELDS),
+                               line_items=items if iconf >= 0.6 else None)
+        iscore = score_line_items(items, s.gold_items or [])
+        for k2 in ("tp", "fp", "fn"):
+            item_agg[k2] += iscore[k2]
+        row = {"file": s.file_name, "fields": {},
+               "line_items": {"pred": items, "gold": s.gold_items,
+                              "sum": isum, "sum_conf": round(iconf, 2),
+                              "f1": iscore["f1"]}}
         for f in TARGET_FIELDS:
             val, conf = agg[f]["value"], agg[f]["confidence"]
             correct = _match(f, val, s.gold.get(f))
@@ -47,8 +76,13 @@ def main():
             buckets[b]["correct"] += int(correct)
         rows.append(row)
         print(f"[{i + 1}/{len(samples)}] " +
-              "  ".join(f"{f.split('_')[0]}={agg[f]['confidence']:.1f}" for f in TARGET_FIELDS))
+              "  ".join(f"{f.split('_')[0]}={agg[f]['confidence']:.1f}" for f in TARGET_FIELDS) +
+              f"  items_f1={iscore['f1']:.2f}")
     elapsed = time.time() - t0
+
+    ip = item_agg["tp"] / (item_agg["tp"] + item_agg["fp"]) if (item_agg["tp"] + item_agg["fp"]) else 0
+    ir = item_agg["tp"] / (item_agg["tp"] + item_agg["fn"]) if (item_agg["tp"] + item_agg["fn"]) else 0
+    if1 = 2 * ip * ir / (ip + ir) if (ip + ir) else 0
 
     print("\n========= CONFIDENCE vs CORRECTNESS =========")
     for b in ("accept", "flag"):
@@ -59,6 +93,8 @@ def main():
     total = buckets["accept"]["total"] + buckets["flag"]["total"]
     auto = buckets["accept"]["total"] / total if total else 0.0
     print(f"auto-accept rate = {auto:.3f}  ({buckets['accept']['total']}/{total} fields)")
+    print(f"line items: micro F1={if1:.3f}  P={ip:.3f}  R={ir:.3f}  "
+          f"(tp={item_agg['tp']} fp={item_agg['fp']} fn={item_agg['fn']})")
     print(f"time={elapsed:.1f}s  ({elapsed / max(len(samples), 1):.1f}s/doc at k={args.k})")
     print("=============================================")
 

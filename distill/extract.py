@@ -14,15 +14,21 @@ MODEL_ID = "Qwen/Qwen2.5-VL-3B-Instruct"
 PROMPT = (
     "You are extracting fields from a store receipt image. "
     "Return ONLY a JSON object with exactly these keys: "
-    "store_name, date, subtotal_price, tax_price, total_price. "
+    "store_name, date, subtotal_price, tax_price, tip_price, total_price, "
+    "line_items. "
     "store_name is the merchant or store name printed at the top. "
     "date is the transaction date as printed. "
     "For the money fields, read the amounts exactly as printed in the totals "
     "section; do not calculate or infer them. "
     "subtotal_price is the amount on a Subtotal or Sub Total line. "
     "tax_price is the amount on a Tax, Sales Tax, or VAT line. "
+    "tip_price is the amount on a Tip or Gratuity line. "
     "total_price is the amount on the Total or Amount Due line. "
-    "Use null for any of these three whose labeled line is not printed. "
+    "Use null for any money field whose labeled line is not printed. "
+    "line_items is an array with one object per purchased product line, each "
+    "with keys description, quantity, price (quantity null if not printed; "
+    "price is the amount printed on that line). Do not include subtotal, tax, "
+    "tip, total, change, or payment lines as items. "
     "Give numbers without the dollar sign (for example 12.99). "
     "Output no text other than the JSON."
 )
@@ -70,7 +76,7 @@ def _run(image, do_sample: bool = False, temperature: float = 1.0) -> dict:
         padding=True, return_tensors="pt",
     ).to(model.device)
 
-    gen_kwargs = {"max_new_tokens": 256, "do_sample": do_sample}
+    gen_kwargs = {"max_new_tokens": 1024, "do_sample": do_sample}
     if do_sample:
         gen_kwargs.update(temperature=temperature, top_p=0.9)
     with torch.no_grad():
@@ -80,12 +86,22 @@ def _run(image, do_sample: bool = False, temperature: float = 1.0) -> dict:
         trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
     )[0]
     data = _parse_json(out_text)
-    return {k: _clean(data.get(k)) for k in TARGET_FIELDS}
+    result = {k: _clean(data.get(k)) for k in TARGET_FIELDS}
+    items = data.get("line_items")
+    result["line_items"] = [
+        {"description": _clean(i.get("description")),
+         "quantity": _clean(i.get("quantity")),
+         "price": _clean(i.get("price"))}
+        for i in items if isinstance(i, dict)
+    ] if isinstance(items, list) else []
+    return result
 
 
 def extract(image) -> ReceiptExtraction:
     """Single greedy extraction."""
-    return ReceiptExtraction(**_run(image))
+    data = _run(image)
+    items = data.pop("line_items", [])
+    return ReceiptExtraction(**data, line_items=items)
 
 
 def extract_samples(image, k: int = 5, temperature: float = 0.7):
