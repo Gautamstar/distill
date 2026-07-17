@@ -7,3 +7,5 @@ datasets
 pillow
 pydantic>=2.0
 pytest
+sentencepiece
+protobuf
