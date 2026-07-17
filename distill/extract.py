@@ -105,5 +105,9 @@ def extract(image) -> ReceiptExtraction:
 
 
 def extract_samples(image, k: int = 5, temperature: float = 0.7):
-    """k sampled extractions, for self-consistency confidence scoring."""
+    """k sampled extractions, for self-consistency confidence scoring.
+    k=1 runs a single greedy pass (fast iteration mode: no confidence signal,
+    every field reports 1.0)."""
+    if k == 1:
+        return [_run(image)]
     return [_run(image, do_sample=True, temperature=temperature) for _ in range(k)]

@@ -77,7 +77,7 @@ def main():
         rows.append(row)
         print(f"[{i + 1}/{len(samples)}] " +
               "  ".join(f"{f.split('_')[0]}={agg[f]['confidence']:.1f}" for f in TARGET_FIELDS) +
-              f"  items_f1={iscore['f1']:.2f}")
+              f"  items_f1={iscore['f1']:.2f}", flush=True)
     elapsed = time.time() - t0
 
     ip = item_agg["tp"] / (item_agg["tp"] + item_agg["fp"]) if (item_agg["tp"] + item_agg["fp"]) else 0
