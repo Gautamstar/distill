@@ -60,7 +60,22 @@ def _clean(v):
     return None if s.lower() in ("", "null", "none", "n/a", "na", "-") else s
 
 
-def _run(image, do_sample: bool = False, temperature: float = 1.0) -> dict:
+def _postprocess(data: dict) -> dict:
+    result = {k: _clean(data.get(k)) for k in TARGET_FIELDS}
+    items = data.get("line_items")
+    result["line_items"] = [
+        {"description": _clean(i.get("description")),
+         "quantity": _clean(i.get("quantity")),
+         "price": _clean(i.get("price"))}
+        for i in items if isinstance(i, dict)
+    ] if isinstance(items, list) else []
+    return result
+
+
+def _generate(image, k: int, do_sample: bool, temperature: float = 0.7):
+    """One prefill of the image, k decodes. Sampled decodes run as a batch
+    (num_return_sequences): decode is memory-bandwidth bound, so k parallel
+    sequences share each weight read instead of paying it k times."""
     model, processor = _load()
     messages = [{
         "role": "user",
@@ -78,23 +93,19 @@ def _run(image, do_sample: bool = False, temperature: float = 1.0) -> dict:
 
     gen_kwargs = {"max_new_tokens": 1024, "do_sample": do_sample}
     if do_sample:
-        gen_kwargs.update(temperature=temperature, top_p=0.9)
+        gen_kwargs.update(temperature=temperature, top_p=0.9, num_return_sequences=k)
     with torch.no_grad():
         generated = model.generate(**inputs, **gen_kwargs)
-    trimmed = [out[len(inp):] for inp, out in zip(inputs.input_ids, generated)]
-    out_text = processor.batch_decode(
-        trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
-    )[0]
-    data = _parse_json(out_text)
-    result = {k: _clean(data.get(k)) for k in TARGET_FIELDS}
-    items = data.get("line_items")
-    result["line_items"] = [
-        {"description": _clean(i.get("description")),
-         "quantity": _clean(i.get("quantity")),
-         "price": _clean(i.get("price"))}
-        for i in items if isinstance(i, dict)
-    ] if isinstance(items, list) else []
-    return result
+    in_len = inputs.input_ids.shape[1]
+    texts = processor.batch_decode(
+        generated[:, in_len:], skip_special_tokens=True,
+        clean_up_tokenization_spaces=False,
+    )
+    return [_postprocess(_parse_json(t)) for t in texts]
+
+
+def _run(image, do_sample: bool = False, temperature: float = 1.0) -> dict:
+    return _generate(image, k=1, do_sample=do_sample, temperature=temperature)[0]
 
 
 def extract(image) -> ReceiptExtraction:
@@ -110,4 +121,4 @@ def extract_samples(image, k: int = 5, temperature: float = 0.7):
     every field reports 1.0)."""
     if k == 1:
         return [_run(image)]
-    return [_run(image, do_sample=True, temperature=temperature) for _ in range(k)]
+    return _generate(image, k=k, do_sample=True, temperature=temperature)
