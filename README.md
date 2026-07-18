@@ -96,6 +96,7 @@ Because the pipeline is schema-driven, targeting a new document type is a config
 | Confidence calibration (ECE) | < 0.05 | TBD (Phase 2) |
 | Median latency per document | < 3s | 6.5s (unoptimized) |
 | Cost per document | $0.00 (local) | $0.00 (local) |
+<img width="1416" height="987" alt="image" src="https://github.com/user-attachments/assets/e8f20022-6912-4a1a-be58-c13a31de91e0" />
 
 ## Getting started
 
