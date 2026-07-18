@@ -91,16 +91,26 @@ def _generate(image, k: int, do_sample: bool, temperature: float = 0.7):
         padding=True, return_tensors="pt",
     ).to(model.device)
 
-    gen_kwargs = {"max_new_tokens": 1024, "do_sample": do_sample}
-    if do_sample:
-        gen_kwargs.update(temperature=temperature, top_p=0.9, num_return_sequences=k)
-    with torch.no_grad():
-        generated = model.generate(**inputs, **gen_kwargs)
     in_len = inputs.input_ids.shape[1]
-    texts = processor.batch_decode(
-        generated[:, in_len:], skip_special_tokens=True,
-        clean_up_tokenization_spaces=False,
-    )
+    texts = []
+    # Sub-batch the k sampled decodes: full k=5 peaks near ~10GB, which spills
+    # into (slow) system RAM whenever desktop apps hold a few GB of VRAM.
+    # Chunks of 3 keep peak ~8.5GB with headroom, still amortizing weight reads.
+    chunk = 3 if do_sample else 1
+    remaining = k
+    while remaining > 0:
+        n = min(chunk, remaining)
+        gen_kwargs = {"max_new_tokens": 1024, "do_sample": do_sample}
+        if do_sample:
+            gen_kwargs.update(temperature=temperature, top_p=0.9,
+                              num_return_sequences=n)
+        with torch.no_grad():
+            generated = model.generate(**inputs, **gen_kwargs)
+        texts.extend(processor.batch_decode(
+            generated[:, in_len:], skip_special_tokens=True,
+            clean_up_tokenization_spaces=False,
+        ))
+        remaining -= n
     return [_postprocess(_parse_json(t)) for t in texts]
 
 
