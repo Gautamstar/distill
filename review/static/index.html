@@ -288,7 +288,7 @@
       }
       $("save-note").textContent = r.review ? "previously saved" : "";
       const first = wrap.querySelector("input");
-      if (first) first.focus();
+      if (first) first.focus({ preventScroll: true });
     }
 
     $("save").onclick = async () => {
