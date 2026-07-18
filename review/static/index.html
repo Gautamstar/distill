@@ -73,7 +73,9 @@
     .nav-mark { font-family: var(--mono); font-size: 13px; font-weight: 500; letter-spacing: 0.1em; }
     .nav-mark span { color: var(--accent); }
 
-    header { padding: 116px 0 0; }
+    /* header.wrap outranks .wrap's padding (class < class+element), otherwise
+       the .wrap padding reset would pull the header under the fixed nav */
+    header.wrap { padding: 116px 24px 0; }
     .head-row { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
     .dot {
       width: 6px; height: 6px; background: var(--accent);
