@@ -1,0 +1,76 @@
+"""One-shot accuracy summary across the pipeline stages, computed from the
+saved result files so the numbers we quote are never hand-copied.
+
+Run:  python summarize_accuracy.py
+"""
+import json
+from pathlib import Path
+
+from distill.score import _match
+
+OUT = Path("outputs")
+ACCEPT = 0.999
+
+
+def raw_baseline(path=OUT / "phase0_results.json"):
+    d = json.load(open(path, encoding="utf-8"))
+    o = d["results"]["overall"]
+    return o, d["results"]["per_field"], len(d["rows"])
+
+
+def gated(path):
+    rows = json.load(open(path, encoding="utf-8"))["rows"]
+    acc_n = acc_ok = flag_n = flag_ok = 0
+    for r in rows:
+        for f, d in r["fields"].items():
+            ok = bool(d["correct"])
+            if d["confidence"] >= ACCEPT:
+                acc_n += 1
+                acc_ok += ok
+            else:
+                flag_n += 1
+                flag_ok += ok
+    return {"n_receipts": len(rows), "fields": acc_n + flag_n,
+            "acc_n": acc_n, "acc_ok": acc_ok, "flag_n": flag_n, "flag_ok": flag_ok}
+
+
+def main():
+    o, per_field, n_docs = raw_baseline()
+    print("=" * 62)
+    print("1. RAW EXTRACTION  (zero-shot Qwen2.5-VL-3B, no gating)")
+    print("=" * 62)
+    print(f"   n = {n_docs} receipts, 5 fields")
+    print(f"   field-level F1 = {o['f1']:.3f}   (P {o['precision']:.3f} / R {o['recall']:.3f})")
+    for f, m in per_field.items():
+        print(f"     {f:16s} F1 {m['f1']:.3f}")
+
+    g = gated(OUT / "confidence_results_v3.json")
+    tot = g["fields"]
+    cov = g["acc_n"] / tot
+    acc_acc = g["acc_ok"] / g["acc_n"]
+    flag_acc = g["flag_ok"] / g["flag_n"]
+    overall_raw = (g["acc_ok"] + g["flag_ok"]) / tot
+
+    print("\n" + "=" * 62)
+    print("2. CONFIDENCE GATING  (self-consistency k=5 + validation)")
+    print("=" * 62)
+    print(f"   n = {g['n_receipts']} receipts, {tot} scored fields")
+    print(f"   ungated accuracy       {overall_raw:.3f}   ({g['acc_ok'] + g['flag_ok']}/{tot})")
+    print(f"   auto-accepted slice    {acc_acc:.3f}   ({g['acc_ok']}/{g['acc_n']}, {cov:.1%} of fields)")
+    print(f"   flagged-for-review     {flag_acc:.3f}   ({g['flag_ok']}/{g['flag_n']}, {1 - cov:.1%} of fields)")
+    print(f"   separation             {acc_acc - flag_acc:+.3f}")
+
+    # End-to-end: accepted fields ship as-is, flagged fields are corrected by a
+    # human. Upper bound assumes the reviewer is right every time.
+    e2e = (g["acc_ok"] + g["flag_n"]) / tot
+    print("\n" + "=" * 62)
+    print("3. END-TO-END PRODUCT  (auto-accept + human reviews the flagged)")
+    print("=" * 62)
+    print(f"   delivered accuracy     {e2e:.3f}   (assumes reviewer is correct)")
+    print(f"   manual work removed    {cov:.1%} of fields never touched by a human")
+    print(f"   residual error         {1 - e2e:.3f}  = wrong fields that ship silently")
+    print("=" * 62)
+
+
+if __name__ == "__main__":
+    main()
