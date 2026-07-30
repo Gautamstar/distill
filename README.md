@@ -99,7 +99,7 @@ Because the pipeline is schema-driven, targeting a new document type is a config
 
 **Definition of done:** typed output, per-field confidence that predicts error, human review queue, full eval harness (field precision/recall/F1 + calibration + auto-accept rate), LLMOps (tracing, cost/latency, CI gate on regressions), and a deployed demo with a metrics-backed README. Everything but calibration, tracing, and deployment is in place.
 
-## Results (targets, filled in as built)
+## Results
 
 Three numbers, because "accuracy" means three different things here. Reproduce them all with `python summarize_accuracy.py`.
 
