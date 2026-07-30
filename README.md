@@ -18,7 +18,7 @@ uvicorn review.app:app --port 8990
 
 Distill is a document-to-structured-data engine. Hand it a scanned or PDF invoice or receipt and it returns clean, typed data (vendor, date, totals, tax, line items) as JSON, with a confidence score on every field and a review step for the fields it is not sure about. It is designed to run entirely on local hardware, so documents never leave the machine.
 
-Unlike a raw OCR script or a single LLM call, Distill knows what it does not know. High-confidence fields are auto-accepted; low-confidence fields are routed to a human. That calibrated confidence is what turns document extraction from a fragile demo into something a business can actually run.
+Unlike a raw OCR script or a single LLM call, Distill knows what it does not know. High-confidence fields are auto-accepted; low-confidence fields are routed to a human. Knowing which is which is what turns document extraction from a fragile demo into something a business can actually run.
 
 ## The problem
 
@@ -40,7 +40,7 @@ Businesses receive large volumes of semi-structured documents where the importan
 flowchart LR
     A[PDF / Image] --> B[Extract - VLM]
     B --> C[Validate - types, format, arithmetic]
-    C --> D[Confidence scoring + calibration]
+    C --> D[Confidence scoring]
     D -->|high confidence| E[Auto-accept]
     D -->|low confidence| F[Human review queue]
     E --> G[(Structured record)]
@@ -52,7 +52,7 @@ flowchart LR
 1. **Ingest** the document image or PDF.
 2. **Extract** fields with a vision-language model.
 3. **Validate** with type, format, and arithmetic rules.
-4. **Score** each field with a calibrated confidence.
+4. **Score** each field: sample the extraction k times, take the majority, and set confidence to the agreement rate. Fields that fail validation get their confidence capped.
 5. **Route** high-confidence fields to auto-accept and low-confidence fields to human review.
 6. **Measure** with an eval harness and feed corrections back in.
 
@@ -74,15 +74,17 @@ Because the pipeline is schema-driven, targeting a new document type is a config
 
 ## Tech stack
 
-- **Language:** Python 3.11
+**Built:**
+- **Language:** Python 3.12
 - **Compute:** PyTorch + CUDA, local on an NVIDIA RTX 4070 (12GB), developed under WSL2
-- **Models:** Qwen2.5-VL-3B for zero-shot extraction; Donut / LayoutLMv3 fine-tuned with LoRA for accuracy
+- **Model:** Qwen2.5-VL-3B (zero-shot, no fine-tuning yet)
 - **Data:** WildReceipt (North American English receipts, MMOCR format), filtered to USD
-- **Schema and validation:** Pydantic
-- **Evaluation:** custom harness, scikit-learn metrics, confidence calibration
+- **Schema and validation:** Pydantic, plus arithmetic and format checks
+- **Evaluation:** custom harness (field P/R/F1, auto-accept curve, calibration table)
 - **Service:** FastAPI backend, single-file review UI (no build step)
-- **Ops:** structured logging with per-document cost and latency tracking, GitHub Actions eval gate
-- **Packaging:** Docker (optional, for the demo)
+- **CI:** GitHub Actions running the test suite on every push
+
+**Planned:** Donut fine-tune (scaffold in `finetune/`, untested), per-document cost and latency tracing, CI gate on accuracy regressions, Docker packaging, deployment.
 
 ## Project status and roadmap
 
