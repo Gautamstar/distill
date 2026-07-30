@@ -97,6 +97,35 @@
       gap: 48px; padding: 56px 0 96px; align-items: start;
     }
 
+    /* upload */
+    .drop {
+      border: 1px dashed rgba(232, 232, 227, 0.22);
+      padding: 22px 18px; text-align: center; cursor: pointer;
+      transition: border-color 0.25s, background 0.25s;
+      margin-bottom: 28px;
+    }
+    .drop:hover, .drop.over { border-color: var(--accent); background: var(--surface); }
+    .drop.busy { cursor: default; border-style: solid; border-color: var(--accent); }
+    .drop b { display: block; font-size: 14px; font-weight: 500; margin-bottom: 5px; }
+    .drop input[type=file] { display: none; }
+    .drop-opts {
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      margin-top: 12px;
+    }
+    .drop-opts label { cursor: pointer; }
+    .bar { height: 2px; background: var(--hairline); margin-top: 14px; overflow: hidden; }
+    .bar i {
+      display: block; height: 100%; width: 30%; background: var(--accent);
+      animation: slide 1.1s var(--ease) infinite;
+    }
+    @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
+    @media (prefers-reduced-motion: reduce) { .bar i { animation: none; width: 100%; opacity: 0.5; } }
+
+    .q-label {
+      display: block; padding: 0 0 10px 12px;
+      border-bottom: 1px solid var(--hairline);
+    }
+
     /* queue */
     .queue { border-top: 1px solid var(--hairline); }
     .q-row {
@@ -204,7 +233,18 @@
   </header>
 
   <main class="wrap app">
-    <div class="queue reveal" style="--d:0.18s" id="queue"></div>
+    <div class="reveal" style="--d:0.18s">
+      <label class="drop" id="drop">
+        <b>Drop a receipt</b>
+        <span class="micro-sm" id="drop-note">or click to choose an image</span>
+        <input type="file" id="file" accept="image/jpeg,image/png,image/webp" />
+        <span class="drop-opts micro-sm">
+          <input type="checkbox" id="opt-items" />
+          <label for="opt-items">extract line items (slower)</label>
+        </span>
+      </label>
+      <div class="queue" id="queue"></div>
+    </div>
     <div class="detail reveal" style="--d:0.24s">
       <div class="receipt-img"><img id="img" alt="receipt scan" /></div>
       <div>
@@ -226,49 +266,60 @@
     // JS is off or the tab is not painting (rAF/transitions suspended).
     document.documentElement.classList.add("js");
     const $ = (id) => document.getElementById(id);
-    let QUEUE = [], CURRENT = null;
+    let EVAL = [], UPLOADS = [], CURRENT = null;
+    const all = () => UPLOADS.concat(EVAL);
 
     const LABELS = {
       store_name: "Store", date: "Date", subtotal_price: "Subtotal",
       tax_price: "Tax", tip_price: "Tip", total_price: "Total",
     };
+    const esc = (s) => String(s).replace(/[&<>"]/g,
+      (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
     async function loadQueue() {
       const r = await (await fetch("/api/queue")).json();
-      QUEUE = r.receipts;
+      EVAL = r.receipts;
+      UPLOADS = r.uploads || [];
       $("stat-accept").textContent = Math.round(r.stats.auto_accept_rate * 100) + "%";
       $("stat-acc").textContent = (r.stats.accept_accuracy * 100).toFixed(1) + "%";
       $("stat-n").textContent = r.stats.n_receipts;
       renderQueue();
     }
 
-    function renderQueue() {
-      $("queue").innerHTML = "";
-      for (const q of QUEUE) {
-        const b = document.createElement("button");
-        b.className = "q-row" + (q.reviewed ? " reviewed" : "") +
-                      (CURRENT === q.id ? " active" : "");
-        const state = q.reviewed
-          ? '<span class="q-state done">✓ done</span>'
-          : q.flagged
-            ? `<span class="q-state flag">${q.flagged} flagged</span>`
-            : '<span class="q-state clear">clear</span>';
-        b.innerHTML = `<span class="q-idx">${String(q.id + 1).padStart(2, "0")}</span>
-                       <span class="q-store">${q.store}</span>${state}`;
-        b.onclick = () => open(q.id);
-        $("queue").appendChild(b);
-      }
+    function rowEl(q, n) {
+      const b = document.createElement("button");
+      b.className = "q-row" + (q.reviewed ? " reviewed" : "") +
+                    (CURRENT === q.id ? " active" : "");
+      const state = q.reviewed
+        ? '<span class="q-state done">✓ done</span>'
+        : q.flagged
+          ? `<span class="q-state flag">${q.flagged} flagged</span>`
+          : '<span class="q-state clear">clear</span>';
+      b.innerHTML = `<span class="q-idx">${n}</span>
+                     <span class="q-store">${esc(q.store)}</span>${state}`;
+      b.onclick = () => openReceipt(q.id);
+      return b;
     }
 
-    async function open(id) {
-      CURRENT = id;
-      renderQueue();
-      const r = await (await fetch("/api/receipt/" + id)).json();
-      $("img").src = "/api/image/" + id;
-      $("panel-idx").textContent = "RECEIPT " + String(id + 1).padStart(2, "0") +
-                                   " / " + QUEUE.length;
-      $("panel-store").textContent =
-        r.fields.find((f) => f.name === "store_name")?.value || "Unknown store";
+    function renderQueue() {
+      const wrap = $("queue");
+      wrap.innerHTML = "";
+      if (UPLOADS.length) {
+        const h = document.createElement("span");
+        h.className = "micro-sm q-label";
+        h.textContent = "YOUR UPLOADS";
+        wrap.appendChild(h);
+        UPLOADS.forEach((q, i) => wrap.appendChild(rowEl(q, "+" + (i + 1))));
+      }
+      const h2 = document.createElement("span");
+      h2.className = "micro-sm q-label";
+      h2.textContent = UPLOADS.length ? "EVAL SET" : "";
+      if (UPLOADS.length) wrap.appendChild(h2);
+      EVAL.forEach((q, i) =>
+        wrap.appendChild(rowEl(q, String(i + 1).padStart(2, "0"))));
+    }
+
+    function renderFields(r) {
       const wrap = $("fields");
       wrap.innerHTML = "";
       wrap.classList.remove("fade"); void wrap.offsetWidth; wrap.classList.add("fade");
@@ -277,19 +328,49 @@
         div.className = "field" + (f.accepted ? "" : " flagged");
         const conf = Math.round(f.confidence * 100);
         const val = f.accepted
-          ? `<span class="f-value${f.value == null ? " null" : ""}">${f.value ?? "not present"}</span>`
-          : `<input data-field="${f.name}" value="${f.value ?? ""}"
+          ? `<span class="f-value${f.value == null ? " null" : ""}">${f.value == null ? "not present" : esc(f.value)}</span>`
+          : `<input data-field="${f.name}" value="${f.value == null ? "" : esc(f.value)}"
                placeholder="not present" spellcheck="false" />`;
         const tag = f.accepted
           ? '<span class="f-tag auto">auto</span>'
-          : '<span class="f-tag review"><span class="dot"></span>review</span>';
+          : `<span class="f-tag review"><span class="dot"></span>${f.flag || "review"}</span>`;
         div.innerHTML = `<span class="micro-sm">${LABELS[f.name] || f.name}</span>
           <span>${val}</span>
           <span class="f-state">${tag}<span class="conf-bar"><i style="width:${conf}%"></i></span></span>`;
         wrap.appendChild(div);
       }
+      if (r.line_items && r.line_items.length) {
+        const h = document.createElement("div");
+        h.className = "micro-sm";
+        h.style.cssText = "padding:22px 0 10px";
+        h.textContent = `LINE ITEMS (${r.line_items.length})`;
+        wrap.appendChild(h);
+        for (const it of r.line_items) {
+          const d = document.createElement("div");
+          d.className = "field";
+          d.style.gridTemplateColumns = "1fr auto";
+          d.innerHTML = `<span class="f-value">${esc(it.description ?? "-")}</span>
+            <span class="f-value">${it.price == null ? "" : esc(it.price)}</span>`;
+          wrap.appendChild(d);
+        }
+      }
+    }
+
+    async function openReceipt(id) {
+      CURRENT = id;
+      renderQueue();
+      const r = await (await fetch("/api/receipt/" + id)).json();
+      $("img").src = "/api/image/" + id;
+      const list = r.uploaded ? UPLOADS : EVAL;
+      const pos = list.findIndex((q) => q.id === id) + 1;
+      $("panel-idx").textContent = r.uploaded
+        ? `UPLOAD ${pos} · extracted in ${r.elapsed ?? "?"}s`
+        : `RECEIPT ${String(pos).padStart(2, "0")} / ${EVAL.length}`;
+      $("panel-store").textContent =
+        r.fields.find((f) => f.name === "store_name")?.value || "Unknown store";
+      renderFields(r);
       $("save-note").textContent = r.review ? "previously saved" : "";
-      const first = wrap.querySelector("input");
+      const first = $("fields").querySelector("input");
       if (first) first.focus({ preventScroll: true });
     }
 
@@ -304,21 +385,81 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ corrections }),
       });
-      QUEUE.find((q) => q.id === CURRENT).reviewed = true;
+      const cur = all().find((q) => q.id === CURRENT);
+      if (cur) cur.reviewed = true;
       $("save-note").textContent = "saved";
-      const next = QUEUE.find((q) => !q.reviewed && q.flagged && q.id > CURRENT) ||
-                   QUEUE.find((q) => !q.reviewed && q.flagged);
-      if (next) open(next.id); else renderQueue();
+      const rest = all();
+      const at = rest.findIndex((q) => q.id === CURRENT);
+      const next = rest.slice(at + 1).find((q) => !q.reviewed && q.flagged) ||
+                   rest.find((q) => !q.reviewed && q.flagged);
+      if (next) openReceipt(next.id); else renderQueue();
     };
+
+    /* ── upload ── */
+    const drop = $("drop"), note = $("drop-note");
+    let busy = false;
+
+    async function send(fileObj) {
+      if (busy || !fileObj) return;
+      busy = true;
+      drop.classList.add("busy");
+      const items = $("opt-items").checked;
+      note.innerHTML = `reading receipt${items ? " and line items" : ""}, k=3 samples
+        <span class="bar"><i></i></span>`;
+      const fd = new FormData();
+      fd.append("file", fileObj);
+      try {
+        const res = await fetch(`/api/extract?k=3&items=${items}`,
+                                { method: "POST", body: fd });
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        const out = await res.json();
+        note.textContent = `done in ${out.elapsed}s · drop another`;
+        await loadQueue();
+        openReceipt(out.id);
+      } catch (err) {
+        note.textContent = "failed: " + err.message;
+      } finally {
+        busy = false;
+        drop.classList.remove("busy", "over");
+        $("file").value = "";
+      }
+    }
+
+    // The model warms in the background at server start; say so rather than
+    // letting an early upload look like a hang.
+    (async function pollReady() {
+      try {
+        const s = await (await fetch("/api/status")).json();
+        if (s.error) { note.textContent = "model unavailable: " + s.error; return; }
+        if (s.ready) { if (!busy) note.textContent = "or click to choose an image"; return; }
+        if (!busy) note.textContent = "warming up the model, first read may be slow";
+      } catch (e) { /* server restarting */ }
+      setTimeout(pollReady, 3000);
+    })();
+
+    $("file").onchange = (e) => send(e.target.files[0]);
+    $("opt-items").onclick = (e) => e.stopPropagation();
+    ["dragenter", "dragover"].forEach((ev) =>
+      drop.addEventListener(ev, (e) => {
+        e.preventDefault();
+        if (!busy) drop.classList.add("over");
+      }));
+    ["dragleave", "drop"].forEach((ev) =>
+      drop.addEventListener(ev, (e) => {
+        e.preventDefault();
+        drop.classList.remove("over");
+      }));
+    drop.addEventListener("drop", (e) => send(e.dataTransfer.files[0]));
 
     document.addEventListener("keydown", (e) => {
       if (e.target.tagName === "INPUT" && e.key !== "Enter") return;
       if (e.key === "Enter" && e.target.tagName === "INPUT") { $("save").click(); }
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
-        const idx = QUEUE.findIndex((q) => q.id === CURRENT);
+        const list = all();
+        const idx = list.findIndex((q) => q.id === CURRENT);
         const n = e.key === "ArrowDown" ? idx + 1 : idx - 1;
-        if (n >= 0 && n < QUEUE.length) open(QUEUE[n].id);
+        if (n >= 0 && n < list.length) openReceipt(list[n].id);
       }
     });
 
@@ -328,8 +469,9 @@
       document.querySelectorAll(".reveal").forEach((el) => el.classList.add("visible")), 40);
 
     loadQueue().then(() => {
-      const first = QUEUE.find((q) => q.flagged) || QUEUE[0];
-      if (first) open(first.id);
+      const list = all();
+      const first = list.find((q) => q.flagged) || list[0];
+      if (first) openReceipt(first.id);
     });
   </script>
 </body>

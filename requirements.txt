@@ -9,3 +9,6 @@ pydantic>=2.0
 pytest
 sentencepiece
 protobuf
+fastapi
+uvicorn
+python-multipart
