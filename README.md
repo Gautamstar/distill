@@ -142,6 +142,8 @@ Analysis helpers: `analyze_confidence.py` (calibration table + auto-accept curve
 
 ## License
 
-MIT (planned).
+MIT, see [LICENSE](LICENSE).
+
+The code is MIT. The WildReceipt dataset is not redistributed here and carries its own terms from the [MMOCR project](https://github.com/open-mmlab/mmocr); download it separately as shown above.
 
 ---
