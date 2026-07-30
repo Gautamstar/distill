@@ -46,6 +46,8 @@ def main():
     ap.add_argument("--k", type=int, default=5, help="samples per receipt")
     ap.add_argument("--split", default="test")
     ap.add_argument("--out", default="outputs/confidence_results.json")
+    ap.add_argument("--no-items", dest="items", action="store_false",
+                    help="fields only: ~4x cheaper, comparable to the v3 runs")
     args = ap.parse_args()
 
     samples = load_wildreceipt_samples(split=args.split, n=args.n)
@@ -55,7 +57,7 @@ def main():
 
     t0 = time.time()
     for i, s in enumerate(samples):
-        preds = extract_samples(s.image, k=args.k)
+        preds = extract_samples(s.image, k=args.k, items=args.items)
         items, isum, iconf = vote_line_items(preds)
         agg = apply_validation(aggregate(preds, TARGET_FIELDS),
                                line_items=items if iconf >= 0.6 else None)

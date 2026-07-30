@@ -11,6 +11,29 @@ from .schema import ReceiptExtraction, TARGET_FIELDS
 
 MODEL_ID = "Qwen/Qwen2.5-VL-3B-Instruct"
 
+SHARED_RULES = (
+    "store_name is the merchant or store name printed at the top. "
+    "date is the transaction date as printed. "
+    "For the money fields, read the amounts exactly as printed in the totals "
+    "section; do not calculate or infer them. "
+    "subtotal_price is the amount on a Subtotal or Sub Total line. "
+    "tax_price is the amount on a Tax, Sales Tax, or VAT line. "
+    "tip_price is the amount on a Tip or Gratuity line. "
+    "total_price is the amount on the Total or Amount Due line. "
+    "Use null for any money field whose labeled line is not printed. "
+    "Give numbers without the dollar sign (for example 12.99). "
+)
+
+# Fields only. ~4x cheaper than the line-item prompt (256 vs 1024 new tokens),
+# which is what makes k=5 over the full test set tractable on a 12GB card.
+PROMPT_FIELDS = (
+    "You are extracting fields from a store receipt image. "
+    "Return ONLY a JSON object with exactly these keys: "
+    "store_name, date, subtotal_price, tax_price, tip_price, total_price. "
+    + SHARED_RULES +
+    "Output no text other than the JSON."
+)
+
 PROMPT = (
     "You are extracting fields from a store receipt image. "
     "Return ONLY a JSON object with exactly these keys: "
@@ -72,7 +95,8 @@ def _postprocess(data: dict) -> dict:
     return result
 
 
-def _generate(image, k: int, do_sample: bool, temperature: float = 0.7):
+def _generate(image, k: int, do_sample: bool, temperature: float = 0.7,
+              items: bool = True):
     """One prefill of the image, k decodes. Sampled decodes run as a batch
     (num_return_sequences): decode is memory-bandwidth bound, so k parallel
     sequences share each weight read instead of paying it k times."""
@@ -81,7 +105,7 @@ def _generate(image, k: int, do_sample: bool, temperature: float = 0.7):
         "role": "user",
         "content": [
             {"type": "image", "image": image},
-            {"type": "text", "text": PROMPT},
+            {"type": "text", "text": PROMPT if items else PROMPT_FIELDS},
         ],
     }]
     text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
@@ -100,7 +124,8 @@ def _generate(image, k: int, do_sample: bool, temperature: float = 0.7):
     remaining = k
     while remaining > 0:
         n = min(chunk, remaining)
-        gen_kwargs = {"max_new_tokens": 1024, "do_sample": do_sample}
+        gen_kwargs = {"max_new_tokens": 1024 if items else 256,
+                      "do_sample": do_sample}
         if do_sample:
             gen_kwargs.update(temperature=temperature, top_p=0.9,
                               num_return_sequences=n)
@@ -125,10 +150,12 @@ def extract(image) -> ReceiptExtraction:
     return ReceiptExtraction(**data, line_items=items)
 
 
-def extract_samples(image, k: int = 5, temperature: float = 0.7):
+def extract_samples(image, k: int = 5, temperature: float = 0.7,
+                    items: bool = True):
     """k sampled extractions, for self-consistency confidence scoring.
     k=1 runs a single greedy pass (fast iteration mode: no confidence signal,
     every field reports 1.0)."""
     if k == 1:
-        return [_run(image)]
-    return _generate(image, k=k, do_sample=True, temperature=temperature)
+        return [_generate(image, k=1, do_sample=False, items=items)[0]]
+    return _generate(image, k=k, do_sample=True, temperature=temperature,
+                     items=items)
