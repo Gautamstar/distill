@@ -68,9 +68,16 @@ def status():
 
 
 def _load_uploads() -> list:
-    if UPLOAD_INDEX.exists():
-        return json.loads(UPLOAD_INDEX.read_text(encoding="utf-8"))
-    return []
+    """Load the upload index, dropping entries whose image is gone.
+
+    The index and the image files can drift apart (a stale in-memory list
+    rewriting the index, files removed by hand). Entries without an image
+    render as broken rows, so reconcile against disk at load time.
+    """
+    if not UPLOAD_INDEX.exists():
+        return []
+    rows = json.loads(UPLOAD_INDEX.read_text(encoding="utf-8"))
+    return [r for r in rows if (UPLOAD_DIR / r.get("file", "")).is_file()]
 
 
 UPLOADS = _load_uploads()

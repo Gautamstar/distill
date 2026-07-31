@@ -99,10 +99,10 @@
 
     /* upload */
     .drop {
+      display: block;                 /* label is inline by default */
       border: 1px dashed rgba(232, 232, 227, 0.22);
       padding: 22px 18px; text-align: center; cursor: pointer;
       transition: border-color 0.25s, background 0.25s;
-      margin-bottom: 28px;
     }
     .drop:hover, .drop.over { border-color: var(--accent); background: var(--surface); }
     .drop.busy { cursor: default; border-style: solid; border-color: var(--accent); }
@@ -110,9 +110,10 @@
     .drop input[type=file] { display: none; }
     .drop-opts {
       display: flex; align-items: center; justify-content: center; gap: 7px;
-      margin-top: 12px;
+      padding: 12px 0 26px;
     }
     .drop-opts label { cursor: pointer; }
+    .drop-opts input { accent-color: var(--accent); }
     .bar { height: 2px; background: var(--hairline); margin-top: 14px; overflow: hidden; }
     .bar i {
       display: block; height: 100%; width: 30%; background: var(--accent);
@@ -238,11 +239,11 @@
         <b>Drop a receipt</b>
         <span class="micro-sm" id="drop-note">or click to choose an image</span>
         <input type="file" id="file" accept="image/jpeg,image/png,image/webp" />
-        <span class="drop-opts micro-sm">
-          <input type="checkbox" id="opt-items" />
-          <label for="opt-items">extract line items (slower)</label>
-        </span>
       </label>
+      <div class="drop-opts micro-sm">
+        <input type="checkbox" id="opt-items" />
+        <label for="opt-items">extract line items (slower)</label>
+      </div>
       <div class="queue" id="queue"></div>
     </div>
     <div class="detail reveal" style="--d:0.24s">
