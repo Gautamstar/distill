@@ -80,12 +80,18 @@ def _load_uploads() -> list:
     return [r for r in rows if (UPLOAD_DIR / r.get("file", "")).is_file()]
 
 
-UPLOADS = _load_uploads()
+def _append_upload(row: dict) -> int:
+    """Append to the index on disk and return the new row's position.
 
-
-def _save_uploads():
+    Disk is the source of truth rather than a module-level list: a cached
+    in-memory copy silently diverges whenever the files change underneath the
+    process, which produces rows pointing at images that no longer exist.
+    """
+    rows = _load_uploads()
+    rows.append(row)
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    UPLOAD_INDEX.write_text(json.dumps(UPLOADS, indent=2), encoding="utf-8")
+    UPLOAD_INDEX.write_text(json.dumps(rows, indent=2), encoding="utf-8")
+    return len(rows) - 1
 
 
 def _reviews() -> dict:
@@ -110,10 +116,11 @@ def _fields(row):
 def _find(rid: str):
     """Resolve a receipt id to (row, is_upload). Uploads use 'u<n>' ids."""
     if rid.startswith("u"):
+        uploads = _load_uploads()
         i = int(rid[1:]) if rid[1:].isdigit() else -1
-        if not 0 <= i < len(UPLOADS):
+        if not 0 <= i < len(uploads):
             raise HTTPException(404)
-        return UPLOADS[i], True
+        return uploads[i], True
     if not rid.isdigit() or not 0 <= int(rid) < len(ROWS):
         raise HTTPException(404)
     return ROWS[int(rid)], False
@@ -137,7 +144,7 @@ def queue():
                          "uploaded": False})
 
     uploads = []
-    for i, row in enumerate(UPLOADS):
+    for i, row in enumerate(_load_uploads()):
         rid = f"u{i}"
         fields = _fields(row)
         store = row["fields"].get("store_name", {}).get("value") or "UNTITLED"
@@ -163,9 +170,11 @@ def receipt(rid: str):
     items = row.get("line_items")
     if isinstance(items, dict):
         items = items.get("pred")
+    # `file` lets the client key its image URL to the actual asset, so a
+    # reused id (u0 after a reset) cannot serve a stale cached image.
     return {"id": rid, "fields": _fields(row), "line_items": items,
             "review": _reviews().get(rid), "uploaded": is_upload,
-            "elapsed": row.get("elapsed")}
+            "elapsed": row.get("elapsed"), "file": Path(row["file"]).stem}
 
 
 @app.get("/api/image/{rid}")
@@ -218,9 +227,8 @@ def extract_upload(file: UploadFile = File(...), k: int = 3, items: bool = False
     row = {"file": name, "fields": fields, "elapsed": elapsed}
     if items:
         row["line_items"] = line_items
-    UPLOADS.append(row)
-    _save_uploads()
-    return {"id": f"u{len(UPLOADS) - 1}", "elapsed": elapsed,
+    idx = _append_upload(row)
+    return {"id": f"u{idx}", "elapsed": elapsed,
             "fields": _fields(row), "line_items": line_items or None}
 
 
