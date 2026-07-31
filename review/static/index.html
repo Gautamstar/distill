@@ -9,18 +9,24 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #0d1111;
-      --layer: #13181a;
-      --layer-2: #171e20;
-      --border: #1e2427;
-      --border-soft: rgba(232, 238, 238, 0.06);
-      --fg: #ededec;
-      --fg-dim: #9aa3a2;
-      --fg-feint: #7a8180;
-      --accent: #3b82f6;
-      --accent-hi: #60a5fa;
-      --accent-wash: rgba(59, 130, 246, 0.10);
-      --ok: #5ec98a;
+      /* Neutral grayscale surfaces; white is the interface accent (selection,
+         primary action). Exactly one hue survives, and only semantically:
+         amber marks fields a human still has to resolve. */
+      --bg: #0b0b0b;
+      --layer: #121212;
+      --layer-2: #1a1a1a;
+      --border: #262626;
+      --border-soft: rgba(255, 255, 255, 0.055);
+      --fg: #ededed;
+      --fg-dim: #a3a3a3;
+      --fg-feint: #6f6f6f;
+      --accent: #fafafa;
+      --accent-hi: #ffffff;
+      --accent-wash: rgba(255, 255, 255, 0.055);
+      --flag: #c9a227;
+      --flag-hi: #dcb64a;
+      --flag-wash: rgba(201, 162, 39, 0.09);
+      --ok: #7d9d84;
       --sans: Inter, system-ui, -apple-system, sans-serif;
       --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
       --ease: cubic-bezier(0.16, 1, 0.3, 1);
@@ -43,8 +49,8 @@
     }
     button, input { font: inherit; color: inherit; background: none; border: none; }
     button { cursor: pointer; }
-    :focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
-    ::selection { background: var(--accent); color: #fff; }
+    :focus-visible { outline: 1px solid var(--fg-dim); outline-offset: 2px; }
+    ::selection { background: rgba(255, 255, 255, 0.18); }
 
     .kick {
       font-family: var(--mono);
@@ -76,7 +82,7 @@
       font-family: var(--mono); font-size: 12px; font-weight: 500;
       letter-spacing: 0.06em; white-space: nowrap;
     }
-    .mark span { color: var(--accent); }
+    .mark span { color: var(--fg-feint); }
     .metrics { display: flex; align-items: center; gap: 18px; margin-left: auto; }
     .metric { display: flex; align-items: baseline; gap: 7px; white-space: nowrap; }
     .metric b { font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: 0; }
@@ -109,7 +115,8 @@
     }
     .filters button:hover { color: var(--fg-dim); background: var(--border-soft); }
     .filters button.on { color: var(--fg); background: var(--layer-2); }
-    .filters .count { color: var(--accent); }
+    .filters .count { color: var(--fg-dim); }
+    .filters button[data-f="review"] .count { color: var(--flag-hi); }
 
     .list { flex: 1; overflow-y: auto; min-height: 0; }
     .group {
@@ -138,7 +145,7 @@
       font-family: var(--mono); font-size: 10px; letter-spacing: 0.02em;
       padding: 1px 6px; white-space: nowrap;
     }
-    .pill.flag { color: var(--accent-hi); background: var(--accent-wash); }
+    .pill.flag { color: var(--flag-hi); background: var(--flag-wash); }
     .pill.clear { color: var(--fg-feint); }
     .pill.done { color: var(--ok); }
 
@@ -157,7 +164,7 @@
       display: flex; align-items: center; justify-content: center; gap: 6px;
       padding: 0 8px 9px;
     }
-    .opts input { accent-color: var(--accent); width: 12px; height: 12px; }
+    .opts input { accent-color: var(--fg-dim); width: 12px; height: 12px; }
     .opts label { cursor: pointer; }
     .bar { height: 2px; margin-top: 8px; background: var(--border); overflow: hidden; }
     .bar i {
@@ -203,7 +210,7 @@
       border-left: 2px solid transparent;
       border-bottom: 1px solid var(--border-soft);
     }
-    .f.flag { border-left-color: var(--accent); background: var(--accent-wash); }
+    .f.flag { border-left-color: var(--flag); background: var(--flag-wash); }
     .f-k { font-family: var(--mono); font-size: 10px; text-transform: uppercase;
            letter-spacing: 0.1em; color: var(--fg-feint); }
     .f-v { font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums;
@@ -220,10 +227,11 @@
     .f-tag { font-family: var(--mono); font-size: 9px; text-transform: uppercase;
              letter-spacing: 0.09em; }
     .f-tag.auto { color: var(--fg-feint); }
-    .f-tag.rev { color: var(--accent-hi); }
+    .f-tag.rev { color: var(--flag-hi); }
     .meter { width: 46px; height: 2px; margin: 5px 0 0 auto; background: var(--border); }
-    .meter i { display: block; height: 100%; background: var(--accent);
+    .meter i { display: block; height: 100%; background: var(--fg-feint);
                transition: width 0.35s var(--ease); }
+    .f.flag .meter i { background: var(--flag); }
 
     .items { padding: 4px 16px 16px; }
     .item {
@@ -238,15 +246,15 @@
     }
     .btn {
       display: inline-flex; align-items: center; gap: 8px;
-      padding: 8px 15px; background: var(--accent); color: #fff;
+      padding: 8px 15px; background: var(--accent); color: var(--bg);
       font-size: 12.5px; font-weight: 550; letter-spacing: -0.005em;
       transition: background var(--t), transform var(--t);
     }
     .btn:hover { background: var(--accent-hi); }
     .btn:active { transform: translateY(1px); }
     .btn kbd {
-      font-family: var(--mono); font-size: 10px; opacity: 0.75;
-      padding-left: 3px; border-left: 1px solid rgba(255,255,255,0.3);
+      font-family: var(--mono); font-size: 10px; opacity: 0.55;
+      border-left: 1px solid rgba(0,0,0,0.25);
       margin-left: 2px; padding-left: 8px;
     }
     .note { font-family: var(--mono); font-size: 10px; color: var(--fg-feint); }
@@ -264,7 +272,7 @@
       padding: 1px 5px; color: var(--fg-dim);
       background: var(--layer-2); border: 1px solid var(--border);
     }
-    .dot { width: 5px; height: 5px; background: var(--accent); animation: pulse 2.2s infinite; }
+    .dot { width: 5px; height: 5px; background: var(--flag); animation: pulse 2.2s infinite; }
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
     @media (prefers-reduced-motion: reduce) {
