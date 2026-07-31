@@ -22,8 +22,13 @@ SHOTS = DOCS / "_frames"
 VIEW = {"width": 1280, "height": 900}
 
 # Receipts chosen for what they demonstrate, not at random.
+#   CLEAN   Walmart: every field agrees and the totals add up, so all auto-accept
+#   CAUGHT  Costco: no subtotal line is printed, the model copies the total, and
+#           validation catches it. Chosen over the Cho Eun two-cent misread
+#           because that one is a coin flip: when the model also computes a
+#           matching total it is self-consistently wrong and arithmetic passes.
 CLEAN = "data/wildreceipt/image_files/Image_59/20/96ae21a2a6cc19e60b28647bdb2d0603365bd0f0.jpeg"
-MISREAD = "data/wildreceipt/image_files/Image_12/10/845be0dd6f5b04866a2042abd28d558032ef2576.jpeg"
+MISREAD = "data/wildreceipt/image_files/Image_80/7/4381.jpeg"
 
 
 def _settle(page, ms=450):
@@ -72,18 +77,26 @@ def main():
         _settle(page, 800)
         caught = shot("05_caught", hold=16)
 
-        Image.open(caught).save(DOCS / "caught.png")
-        page.screenshot(path=str(DOCS / "queue.png"), full_page=True)
+        # Captured at 2x for sharpness, downscaled for the README: a 2560px
+        # PNG of a dark UI is several MB and GitHub serves it on every view.
+        def web(src, dest, width=1500):
+            im = Image.open(src).convert("RGB")
+            im.resize((width, round(im.height * width / im.width)), Image.LANCZOS)\
+              .save(DOCS / dest, quality=88, optimize=True)
+
+        web(caught, "caught.jpg")
+        page.screenshot(path=str(SHOTS / "queue_full.png"), full_page=True)
+        web(SHOTS / "queue_full.png", "queue.jpg")
         browser.close()
 
     imgs = [Image.open(f).convert("RGB") for f in frames]
     w, h = imgs[0].size
-    imgs = [im.resize((w // 2, h // 2), Image.LANCZOS) for im in imgs]
+    imgs = [im.resize((w // 3, h // 3), Image.LANCZOS) for im in imgs]
     imgs[0].save(DOCS / "demo.gif", save_all=True, append_images=imgs[1:],
                  duration=320, loop=0, optimize=True)
 
-    for f in (DOCS / "demo.gif", DOCS / "caught.png", DOCS / "queue.png"):
-        print(f"{f}  {f.stat().st_size / 1e6:.1f} MB")
+    for f in (DOCS / "demo.gif", DOCS / "caught.jpg", DOCS / "queue.jpg"):
+        print(f"{f}  {f.stat().st_size / 1e6:.2f} MB")
 
 
 if __name__ == "__main__":

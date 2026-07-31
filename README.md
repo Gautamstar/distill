@@ -6,12 +6,20 @@
 
 ## Demo
 
-![Distill review queue](https://github.com/user-attachments/assets/e8f20022-6912-4a1a-be58-c13a31de91e0)
+![Uploading a receipt and getting confidence-gated fields back](docs/demo.gif)
 
-The review queue. Fields the model is confident about are auto-accepted and shown quietly with their confidence; fields it distrusts are highlighted and editable. Corrections are persisted and feed back into evaluation. Keyboard-driven, so a reviewer never leaves the home row.
+Drop a receipt; about four seconds later the fields come back, each with a confidence score. Fields the model agrees with itself on *and* that survive validation are auto-accepted and shown quietly. Everything else is highlighted, editable, and waiting for a human. Corrections persist and feed back into evaluation. Keyboard-driven, so a reviewer never leaves the home row.
+
+### Why this is not an OCR wrapper
+
+![Validation catching an invented subtotal](docs/caught.jpg)
+
+This Costco receipt goes straight from line items to `TOTAL 70.34`. There is no subtotal line on it at all. The model reports a subtotal anyway, copying the total, and nothing about `70.34` looks wrong in isolation: it is a plausible number, correctly formatted, in the right place. A bare LLM hands it to your accounting system.
+
+Distill flags it, because a subtotal equal to the total with no tax printed is arithmetically incoherent. The field goes to a human instead of into the books. That is the entire thesis: the model does not have to be right, it has to know when it might be wrong.
 
 ```bash
-uvicorn review.app:app --port 8990
+uvicorn review.app:app --port 8990    # then drop a receipt at localhost:8990
 ```
 
 ## Overview
