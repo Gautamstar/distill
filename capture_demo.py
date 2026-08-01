@@ -10,6 +10,7 @@ Prereq: the server is running and warm (uvicorn review.app:app --port 8990).
 
 Run:  python capture_demo.py
 """
+import json
 import time
 from pathlib import Path
 
@@ -66,15 +67,43 @@ def main():
         _settle(page, 800)
         shot("03_clean", hold=12)
 
-        # 3. the interesting one: subtotal misread by two cents, caught by
-        #    the arithmetic check rather than shipped silently
-        page.set_input_files("#file", MISREAD)
-        _settle(page, 700)
-        shot("04_working2", hold=5)
-        page.wait_for_function(
-            "document.getElementById('drop-note').textContent.includes('done')",
-            timeout=120000)
-        _settle(page, 800)
+        # 3. the one the README talks about: the model invents a subtotal and
+        #    validation catches the incoherence.
+        #
+        #    Sampling is stochastic, so the same receipt does not always land on
+        #    the arithmetic flag - sometimes the samples merely disagree, which
+        #    illustrates a different (weaker) point. Retry until the run shows
+        #    the behaviour the caption describes, so the asset cannot drift out
+        #    of sync with the text. Every attempt is a real, unedited run.
+        for attempt in range(4):
+            page.set_input_files("#file", MISREAD)
+            _settle(page, 700)
+            if attempt == 0:
+                shot("04_working2", hold=5)
+            page.wait_for_function(
+                "document.getElementById('drop-note').textContent.includes('done')",
+                timeout=120000)
+            _settle(page, 800)
+            flags = page.evaluate(
+                "[...document.querySelectorAll('.f-tag.rev')].map(e => e.textContent.trim())")
+            if "arithmetic" in flags:
+                break
+            print(f"  attempt {attempt + 1}: flags={flags}, retrying", flush=True)
+
+        # Retries leave near-duplicate rows in the queue. Keep the first upload
+        # and the winning one; the server reads the index from disk per request,
+        # so pruning here is picked up on reload.
+        index = Path("outputs/uploads/index.json")
+        rows = json.loads(index.read_text())
+        if len(rows) > 2:
+            keep = [rows[0], rows[-1]]
+            for r in rows[1:-1]:
+                (Path("outputs/uploads") / r["file"]).unlink(missing_ok=True)
+            index.write_text(json.dumps(keep, indent=2))
+            page.reload(wait_until="networkidle")
+            _settle(page, 700)
+            page.evaluate("openReceipt('u1')")
+            _settle(page, 900)
         caught = shot("05_caught", hold=16)
 
         # Captured at 2x for sharpness, downscaled for the README: a 2560px

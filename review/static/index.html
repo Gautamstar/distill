@@ -9,24 +9,26 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
     :root {
-      /* Neutral grayscale surfaces; white is the interface accent (selection,
-         primary action). Exactly one hue survives, and only semantically:
-         amber marks fields a human still has to resolve. */
-      --bg: #333333;
-      --layer: #3c3c3c;
-      --layer-2: #494949;
-      --border: #585858;
-      --border-soft: rgba(255, 255, 255, 0.10);
-      --fg: #f7f7f7;
-      --fg-dim: #c9c9c9;
-      --fg-feint: #a2a2a2;
-      --accent: #fafafa;
-      --accent-hi: #ffffff;
-      --accent-wash: rgba(255, 255, 255, 0.055);
-      --flag: #c9a227;
-      --flag-hi: #dcb64a;
-      --flag-wash: rgba(201, 162, 39, 0.09);
-      --ok: #7d9d84;
+      /* Light theme. Panels are white, the viewer canvas is a step darker so a
+         scanned white receipt still reads as an object on a surface. Near-black
+         is the interface accent (selection, primary action). Exactly one hue
+         survives, and only semantically: amber marks fields a human still has
+         to resolve, darkened here to hold contrast on white. */
+      --bg: #eaeaec;
+      --layer: #ffffff;
+      --layer-2: #f2f2f4;
+      --border: #dedee2;
+      --border-soft: rgba(0, 0, 0, 0.07);
+      --fg: #18181b;
+      --fg-dim: #55555e;
+      --fg-feint: #8b8b95;
+      --accent: #18181b;
+      --accent-hi: #000000;
+      --accent-wash: rgba(0, 0, 0, 0.04);
+      --flag: #b45309;
+      --flag-hi: #92400e;
+      --flag-wash: rgba(180, 83, 9, 0.07);
+      --ok: #3f7d54;
       --sans: Inter, system-ui, -apple-system, sans-serif;
       --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
       --ease: cubic-bezier(0.16, 1, 0.3, 1);
@@ -36,7 +38,7 @@
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; }
-    html { color-scheme: dark; }
+    html { color-scheme: light; }
     body {
       background: var(--bg);
       color: var(--fg);
@@ -50,7 +52,7 @@
     button, input { font: inherit; color: inherit; background: none; border: none; }
     button { cursor: pointer; }
     :focus-visible { outline: 1px solid var(--fg-dim); outline-offset: 2px; }
-    ::selection { background: rgba(255, 255, 255, 0.18); }
+    ::selection { background: rgba(0, 0, 0, 0.12); }
 
     .kick {
       font-family: var(--mono);
@@ -253,8 +255,8 @@
     .btn:hover { background: var(--accent-hi); }
     .btn:active { transform: translateY(1px); }
     .btn kbd {
-      font-family: var(--mono); font-size: 10px; opacity: 0.55;
-      border-left: 1px solid rgba(0,0,0,0.25);
+      font-family: var(--mono); font-size: 10px; opacity: 0.6;
+      border-left: 1px solid rgba(255,255,255,0.28);
       margin-left: 2px; padding-left: 8px;
     }
     .note { font-family: var(--mono); font-size: 10px; color: var(--fg-feint); }
