@@ -26,7 +26,14 @@ def _clean_price(v):
     return t or None
 
 
-def build(split_file, usd_only=True):
+def build(split_file, usd_only=True, items=True):
+    """items=False drops line items from the targets.
+
+    Line-item tags outnumber header tags about 5:1 (4,476 <s_description> vs
+    731 <s_store_name>), so with them included the model learns the frequent
+    tokens and never emits the header fields. Header-only targets are also what
+    the zero-shot baseline is scored on, which keeps the comparison honest.
+    """
     rows = []
     for rec in _records(split_file):
         gold = _build_gold(rec)
@@ -34,18 +41,27 @@ def build(split_file, usd_only=True):
             continue
         for k in PRICE_KEYS:
             gold[k] = _clean_price(gold.get(k))
-        items = _build_line_items(rec)
-        for it in items:
-            it["price"] = _clean_price(it.get("price"))
-        rows.append({"image": rec["file_name"], "target": to_sequence(gold, items)})
+        line_items = []
+        if items:
+            line_items = _build_line_items(rec)
+            for it in line_items:
+                it["price"] = _clean_price(it.get("price"))
+        rows.append({"image": rec["file_name"],
+                     "target": to_sequence(gold, line_items)})
     return rows
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--no-items", dest="items", action="store_false",
+                    help="header fields only (matches the zero-shot eval scope)")
+    args = ap.parse_args()
+
     os.makedirs(OUT, exist_ok=True)
     counts = {}
     for split, fn in [("train", "train.txt"), ("test", "test.txt")]:
-        rows = build(fn)
+        rows = build(fn, items=args.items)
         counts[split] = len(rows)
         with open(f"{OUT}/{split}.jsonl", "w", encoding="utf-8") as f:
             for r in rows:
@@ -55,8 +71,9 @@ def main():
     with open(f"{OUT}/special_tokens.json", "w", encoding="utf-8") as f:
         json.dump(toks, f, indent=2)
 
-    print(f"train={counts['train']}  test={counts['test']}  special_tokens={len(toks)}")
-    sample = build("test.txt")[0]
+    print(f"train={counts['train']}  test={counts['test']}  "
+          f"special_tokens={len(toks)}  line_items={args.items}")
+    sample = build("test.txt", items=args.items)[0]
     print(f"\nsample target:\n{sample['target']}")
     print(f"\nparsed:\n{json.dumps(from_sequence(sample['target']), ensure_ascii=False)}")
 

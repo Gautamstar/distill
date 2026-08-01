@@ -75,18 +75,25 @@ def main():
     ap.add_argument("--batch", type=int, default=2)
     ap.add_argument("--accum", type=int, default=4)
     ap.add_argument("--lr", type=float, default=3e-5)
+    ap.add_argument("--resume", default=None,
+                    help="continue from a checkpoint dir instead of donut-base")
     ap.add_argument("--ckpt_every", type=int, default=5)
     ap.add_argument("--save_dir", default="finetune/donut-distill")
     args = ap.parse_args()
 
-    processor = DonutProcessor.from_pretrained(MODEL)
+    # --resume continues from a checkpoint (tokenizer and resized embeddings
+    # are already saved there) instead of restarting from donut-base.
+    src = args.resume or MODEL
+    processor = DonutProcessor.from_pretrained(src)
     processor.image_processor.size = {"height": args.img_h, "width": args.img_w}
     processor.image_processor.do_align_long_axis = False
-    processor.tokenizer.add_special_tokens(
-        {"additional_special_tokens": special_tokens()})
+    if not args.resume:
+        processor.tokenizer.add_special_tokens(
+            {"additional_special_tokens": special_tokens()})
 
-    model = VisionEncoderDecoderModel.from_pretrained(MODEL)
-    model.decoder.resize_token_embeddings(len(processor.tokenizer))
+    model = VisionEncoderDecoderModel.from_pretrained(src)
+    if not args.resume:
+        model.decoder.resize_token_embeddings(len(processor.tokenizer))
     model.config.encoder.image_size = [args.img_h, args.img_w]
     model.config.decoder_start_token_id = processor.tokenizer.convert_tokens_to_ids(TASK_START)
     model.config.pad_token_id = processor.tokenizer.pad_token_id
