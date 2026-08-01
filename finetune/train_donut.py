@@ -38,15 +38,22 @@ class ReceiptDS(Dataset):
     def __getitem__(self, i):
         r = self.rows[i]
         img = Image.open(BASE / r["image"]).convert("RGB")
-        pv = self.p(img, random_padding=True, return_tensors="pt").pixel_values[0]
+        pv = self.p(img, return_tensors="pt").pixel_values[0]
         tok = self.p.tokenizer(
             r["target"] + self.p.tokenizer.eos_token,
-            add_special_tokens=False, max_length=self.max_len,
+            add_special_tokens=False, max_length=self.max_len + 1,
             padding="max_length", truncation=True, return_tensors="pt",
         )
-        labels = tok.input_ids[0].clone()
+        ids = tok.input_ids[0]
+        # Shift explicitly instead of letting the model derive decoder inputs
+        # from labels: the target already begins with <s_receipt>, and
+        # decoder_start_token_id is that same token, so the automatic shift
+        # prepends a second one and teaches a misaligned mapping.
+        decoder_input_ids = ids[:-1].clone()
+        labels = ids[1:].clone()
         labels[labels == self.p.tokenizer.pad_token_id] = -100
-        return {"pixel_values": pv, "labels": labels}
+        return {"pixel_values": pv, "decoder_input_ids": decoder_input_ids,
+                "labels": labels}
 
 
 def _save(model, processor, path):
@@ -63,9 +70,12 @@ def main():
     ap.add_argument("--img_h", type=int, default=1280)
     ap.add_argument("--img_w", type=int, default=960)
     ap.add_argument("--max_len", type=int, default=768)
-    ap.add_argument("--batch", type=int, default=1)
-    ap.add_argument("--accum", type=int, default=8)
+    # batch 2 peaks near ~7GB on a 12GB card (batch 1 measured 4.0GB), which
+    # leaves room for desktop apps; accum keeps the effective batch at 8.
+    ap.add_argument("--batch", type=int, default=2)
+    ap.add_argument("--accum", type=int, default=4)
     ap.add_argument("--lr", type=float, default=3e-5)
+    ap.add_argument("--ckpt_every", type=int, default=5)
     ap.add_argument("--save_dir", default="finetune/donut-distill")
     args = ap.parse_args()
 
@@ -98,22 +108,33 @@ def main():
     step = 0
     t0 = time.time()
     for epoch in range(args.epochs):
+        run, seen = 0.0, 0
         for bi, batch in enumerate(dl):
             pv = batch["pixel_values"].to(device, dtype=torch.bfloat16)
             labels = batch["labels"].to(device)
-            with torch.autocast("cuda", dtype=torch.bfloat16):
-                out = model(pixel_values=pv, labels=labels)
+            dii = batch["decoder_input_ids"].to(device)
+            out = model(pixel_values=pv, decoder_input_ids=dii, labels=labels)
             (out.loss / args.accum).backward()
+            run += out.loss.item()
+            seen += 1
             if (bi + 1) % args.accum == 0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
                 opt.step()
-                opt.zero_grad()
+                opt.zero_grad(set_to_none=True)
                 step += 1
-                mem = torch.cuda.max_memory_allocated() / 1e9
-                print(f"epoch {epoch} step {step} loss {out.loss.item():.4f} "
-                      f"peakVRAM {mem:.1f}GB t {time.time() - t0:.0f}s", flush=True)
+                if step % 10 == 0:
+                    mem = torch.cuda.max_memory_allocated() / 1e9
+                    print(f"epoch {epoch} step {step} loss {run / seen:.4f} "
+                          f"peakVRAM {mem:.1f}GB t {time.time() - t0:.0f}s", flush=True)
+                    run, seen = 0.0, 0
                 if args.max_steps and step >= args.max_steps:
                     print("max_steps reached (smoke ok).", flush=True)
                     return
+        # periodic checkpoints so a long run survives a crash and an earlier
+        # epoch stays available if later ones overfit; every epoch would be
+        # ~800MB each, so space them out
+        if (epoch + 1) % args.ckpt_every == 0 and epoch + 1 < args.epochs:
+            _save(model, processor, f"{args.save_dir}-ep{epoch + 1}")
     _save(model, processor, args.save_dir)
 
 
