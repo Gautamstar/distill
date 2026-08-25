@@ -85,6 +85,19 @@ def main():
     print(f"   manual work removed    {cov:.1%} of fields never touched by a human")
     print(f"   residual error         {1 - e2e:.3f}  = wrong fields that ship silently")
 
+    from distill.trace import summary as trace_summary
+    t = trace_summary(op="extract")
+    if t.get("n"):
+        print("
+" + "=" * 62)
+        print("LATENCY AND COST  (traced extractions on this install)")
+        print("=" * 62)
+        print(f"   documents              {t['n']}  ({t['failures']} failed)")
+        print(f"   p50 / p95 latency      {t['p50_seconds']:.2f}s / {t['p95_seconds']:.2f}s")
+        print(f"   throughput             {t['docs_per_hour']:.0f} docs/hour")
+        print(f"   cost                   ${t['usd_local']:.2f} local "
+              f"(${t['usd_if_hosted']:.2f} on a hosted vision API)")
+
     d = donut()
     if d:
         do = d["results"]["overall"]
