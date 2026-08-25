@@ -104,12 +104,13 @@ Because the pipeline is schema-driven, targeting a new document type is a config
 - [ ] **Phase 2, differentiators:** human review queue, confidence calibration, tracing and cost, CI eval gate.
   - [x] Human review queue (FastAPI + web UI, corrections persisted)
   - [x] CI running the test suite on every push
-  - [ ] Calibration (ECE), per-document cost/latency tracing, CI gate on accuracy regressions
+  - [x] Calibration measured (ECE 0.115, MCE 0.275) with a reliability table and a recalibration fit
+  - [ ] Per-document cost/latency tracing, CI gate on accuracy regressions
 - [ ] **Phase 3, polish:** deployment, results writeup.
   - [x] Fine-tuned small model trained and evaluated (0.583 F1 at 0.16 s/doc; see the fine-tuning section below)
   - [ ] Train it to parity with the zero-shot baseline, then deploy it CPU-only
 
-**Definition of done:** typed output, per-field confidence that predicts error, human review queue, full eval harness (field precision/recall/F1 + calibration + auto-accept rate), LLMOps (tracing, cost/latency, CI gate on regressions), and a deployed demo with a metrics-backed README. Everything but calibration, tracing, and deployment is in place.
+**Definition of done:** typed output, per-field confidence that predicts error, human review queue, full eval harness (field precision/recall/F1 + calibration + auto-accept rate), LLMOps (tracing, cost/latency, CI gate on regressions), and a deployed demo with a metrics-backed README. Outstanding: cost/latency tracing, the CI regression gate, and deployment.
 
 ## Results
 
@@ -123,7 +124,7 @@ Three numbers, because "accuracy" means three different things here. Reproduce t
 
 | Other metric | Target | Current |
 | --- | --- | --- |
-| Confidence calibration (ECE) | < 0.05 | not yet measured |
+| Confidence calibration (ECE) | < 0.05 | **0.115** — the signal separates well but is not well scaled; see below |
 | Latency per document | < 3s | 6.5s single pass; 20-50s at k=5 sampling |
 | Cost per document | $0.00 | $0.00 (local) |
 
@@ -152,6 +153,27 @@ Three bugs surfaced along the way, none of which the metrics alone would have re
 Reproduce with `python -m finetune.prepare_data --no-items`, `python -m finetune.train_donut --epochs 20`, `python -m finetune.eval_donut --n 100`. Evaluation runs through the same `distill.score` as the baseline, so the two numbers are measured with one ruler.
 
 
+### Is the confidence *calibrated*, not just separating?
+
+Separation says the signal ranks correctly; calibration asks whether the number means what it says. Run `python run_calibration.py`:
+
+| stated | n | observed accuracy | gap |
+| --- | --- | --- | --- |
+| 1.00 | 89 | 0.944 | -0.056 |
+| 0.80 | 6 | 0.667 | -0.133 |
+| 0.60 | 9 | 0.444 | -0.156 |
+| 0.50 | 34 | 0.706 | **+0.206** |
+| 0.40 | 8 | 0.125 | -0.275 |
+| 0.20 | 4 | 0.000 | -0.200 |
+
+**ECE 0.115, MCE 0.275** — well short of the < 0.05 target, and the shape is informative:
+
+- Fields capped at **0.5 by validation are actually 70.6% correct**. That is the over-flagging problem with a number on it: arithmetic checks route work to a human that a human usually did not need to see. Recovering that bin is where the auto-accept coverage gap (59%) mostly lives.
+- Every sampling-derived level is **overconfident**. A k-sample agreement rate is a useful ordering, but it is not a probability, and treating it as one would misprice any threshold policy built on top.
+
+Refitting each level to its observed accuracy drops in-sample ECE to 0.004, but that is a lookup fitted on the same 150 decisions it is scored against — a floor, not a generalisation estimate. Applying it to the product honestly needs a second labelled run, so the fit ships as a reported measurement rather than a silent change to the pipeline.
+
+
 ## Getting started
 
 **Prerequisites:** WSL2 with CUDA, an NVIDIA GPU with 12GB or more VRAM, Python 3.11.
@@ -167,6 +189,7 @@ mkdir -p data && cd data && wget https://download.openmmlab.com/mmocr/data/wildr
 python run_phase0.py --n 100                      # extraction baseline, prints field F1
 python run_confidence.py --n 30 --k 5             # confidence gating (add --no-items to run ~4x cheaper)
 python summarize_accuracy.py                      # all three headline numbers
+python run_calibration.py                         # reliability table + ECE/MCE
 uvicorn review.app:app --port 8990                # review queue at localhost:8990
 pytest tests/ -q                                  # 86 tests
 ```
