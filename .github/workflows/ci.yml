@@ -16,7 +16,7 @@ jobs:
           python-version: "3.12"
       # The scoring, validation and calibration code is pure Python; the model
       # stack stays out of CI so this stays fast and GPU-free.
-      - run: pip install pydantic pytest
+      - run: pip install pydantic pytest pillow
       - run: python -m pytest tests/ -q --ignore=tests/test_regression.py
 
   metrics:
@@ -27,7 +27,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install pydantic pytest
+      - run: pip install pydantic pytest pillow
       # Re-scores frozen predictions from real runs and asserts the numbers the
       # README publishes still fall out. Cannot catch model drift (no GPU), but
       # it fails the build if a change to the scorer, the validation rules or
