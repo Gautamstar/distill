@@ -4,10 +4,15 @@ The app splits cleanly: only `/api/extract` needs a model, everything else is
 ordinary Python. So the deployment cost is decided entirely by which backend
 you serve.
 
-| Backend | Params | Hardware | Rough AWS cost, always on |
-| --- | --- | --- | --- |
-| `vlm` — Qwen2.5-VL-3B | 3B | GPU, ~8GB VRAM | ~$380/mo (`g4dn.xlarge`) |
-| `donut` — fine-tuned | 200M | **CPU** | ~$0–15/mo (App Runner, Fargate, Lambda) |
+| Backend | Params | Hardware | Latency | Rough AWS cost, always on |
+| --- | --- | --- | --- | --- |
+| `vlm` — Qwen2.5-VL-3B | 3B | GPU, ~8GB VRAM | 4.9s p50 (k=3) | ~$380/mo (`g4dn.xlarge`) |
+| `donut` — fine-tuned | 200M | **CPU** | ~5.0s, measured | ~$0–15/mo (App Runner, Fargate) |
+
+**The win is the hardware bill, not the clock.** Donut runs at 0.16s/doc on a
+GPU but roughly **5.0s/doc on CPU** — about the same wall time as the VLM on a
+GPU. What changes is that it needs no GPU at all, which is the difference
+between a ~$380/month instance and a ~$15/month container.
 
 The Dockerfile builds the CPU path. Set `DISTILL_BACKEND=vlm` only where a GPU
 is actually present.
@@ -26,8 +31,9 @@ curl localhost:8080/healthz
 ```
 
 `/healthz` answers as soon as the process is up and reports `model_ready`
-separately, so an orchestrator will not kill the container during the ~30s
-model load.
+separately, so an orchestrator will not kill the container during the model
+load — **measured at ~52s on CPU**, which is why the healthcheck allows a 90s
+start period.
 
 ## AWS
 
@@ -39,9 +45,10 @@ you HTTPS and a URL. Push the image, point a service at it, set the port to
 an ALB in front targeting `/healthz`.
 
 **Lambda** is cheapest at demo traffic and the free tier likely covers it
-outright, but it needs the Lambda Web Adapter or Mangum in front of ASGI, and
-cold starts pay the model load. Good for a link nobody hits continuously; bad
-if a reviewer waits 30 seconds on their first click.
+outright, but it needs the Lambda Web Adapter or Mangum in front of ASGI, and a
+cold start pays the full ~52s model load before a ~5s extraction. That is a bad
+first impression for a portfolio link. Prefer App Runner, or a small
+always-warm Fargate task, unless traffic is genuinely negligible.
 
 ### Things that will bite
 

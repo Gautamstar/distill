@@ -127,7 +127,7 @@ Three numbers, because "accuracy" means three different things here. Reproduce t
 | Other metric | Target | Current |
 | --- | --- | --- |
 | Confidence calibration (ECE) | < 0.05 | **0.115** — the signal separates well but is not well scaled; see below |
-| Latency per document | < 3s | p50 **4.9s**, p95 12.4s at k=3 (traced over real extractions); 0.16s with the fine-tuned Donut |
+| Latency per document | < 3s | p50 **4.9s**, p95 12.4s at k=3 (traced); Donut 0.16s on GPU, ~5.0s on CPU |
 | Cost per document | $0.00 | $0.00 local — the same volume on a hosted vision API would bill ~$0.004/doc |
 
 **Honest caveats.** The confidence numbers come from n=30 receipts (150 field decisions), so read them as ±5 points; the +40 point separation is far too wide for sample noise to threaten, but the point estimate will move. All figures are **field-level**, not document-level ("every field on this receipt is correct" is a much harder bar and would be substantially lower). The end-to-end number assumes the human reviewer is always right, so treat it as a ceiling. WildReceipt's own labels contain real errors, which caps measurable accuracy below what the model actually achieves: of the 5 confident-but-wrong fields in the last run, 2 were cases where the model was right and the dataset was wrong.
@@ -141,8 +141,8 @@ The zero-shot VLM is 3B parameters and needs a GPU. A fine-tuned [Donut](https:/
 | Overall field F1 | **0.804** | 0.583 |
 | store / date | 0.82 / 0.80 | 0.74 / 0.79 |
 | subtotal / tax / total | 0.74 / 0.84 / 0.78 | 0.61 / 0.09 / 0.45 |
-| Latency | 6.5 s/doc | **0.16 s/doc** (40x) |
-| Params | 3B, ~8GB VRAM | 200M, CPU-viable |
+| Latency | 6.5 s/doc (GPU) | **0.16 s/doc** on GPU, **~5.0 s/doc on CPU** |
+| Params | 3B, ~8GB VRAM | 200M, runs with no GPU at all |
 
 **The honest read: it is undertrained, not incapable.** Accuracy was still climbing when the run ended (overall 0.497 at 20 epochs to 0.583 at 45; `total_price` went 0.056 to 0.453 as it finally learned to emit more than one price field per receipt) and the loss was still falling at 0.42. The untried lever is the LR warmup and cosine schedule the Donut paper uses, which this run skipped. Reaching 0.795 plausibly needs a few hundred more epochs, which is hours, not days, on a consumer GPU.
 
