@@ -62,10 +62,21 @@ def to_sequence(gold: dict, line_items=None) -> str:
 
 
 def _extract(seq, key, dotall=False):
+    """Value between an opening tag and whatever ends it.
+
+    Deliberately does not require the matching closing tag: a fine-tuned model
+    routinely emits `<s_subtotal_price> 55.96</s_total_price>`, having correctly
+    identified the field and read the value while picking the wrong closer.
+    Requiring the exact pair discards a correct extraction over a formatting
+    artifact, so terminate on the next tag of any kind instead.
+    """
     a, b = _tok(key)
-    m = re.search(re.escape(a) + r"(.*?)" + re.escape(b), seq,
-                  re.DOTALL if dotall else 0)
-    return m.group(1).strip() if m else None
+    exact = re.search(re.escape(a) + r"(.*?)" + re.escape(b), seq,
+                      re.DOTALL if dotall else 0)
+    if exact:
+        return exact.group(1).strip()
+    loose = re.search(re.escape(a) + r"\s*([^<]*)", seq)
+    return loose.group(1).strip() or None if loose else None
 
 
 def from_sequence(seq: str) -> dict:

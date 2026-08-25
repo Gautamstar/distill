@@ -7,3 +7,5 @@ outputs/
 .env
 .cache/
 docs/_frames/
+finetune/donut-distill*/
+finetune/data/

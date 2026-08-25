@@ -34,6 +34,12 @@ def gated(path):
             "acc_n": acc_n, "acc_ok": acc_ok, "flag_n": flag_n, "flag_ok": flag_ok}
 
 
+def donut(path=OUT / "donut_eval.json"):
+    if not path.exists():
+        return None
+    return json.load(open(path, encoding="utf-8"))
+
+
 def main():
     o, per_field, n_docs = raw_baseline()
     print("=" * 62)
@@ -69,6 +75,23 @@ def main():
     print(f"   delivered accuracy     {e2e:.3f}   (assumes reviewer is correct)")
     print(f"   manual work removed    {cov:.1%} of fields never touched by a human")
     print(f"   residual error         {1 - e2e:.3f}  = wrong fields that ship silently")
+
+    d = donut()
+    if d:
+        do = d["results"]["overall"]
+        print("\n" + "=" * 62)
+        print("4. FINE-TUNED DONUT  vs the zero-shot VLM, same harness")
+        print("=" * 62)
+        print(f"   {'field':16s} {'zero-shot':>10s} {'fine-tuned':>11s} {'delta':>8s}")
+        for f, m in per_field.items():
+            fm = d["results"]["per_field"].get(f)
+            if not fm:
+                continue
+            print(f"   {f:16s} {m['f1']:10.3f} {fm['f1']:11.3f} {fm['f1'] - m['f1']:+8.3f}")
+        print(f"   {'OVERALL':16s} {o['f1']:10.3f} {do['f1']:11.3f} {do['f1'] - o['f1']:+8.3f}")
+        print(f"   {'line items':16s} {'-':>10s} {d['line_items']['f1']:11.3f}")
+        print(f"   {'sec / doc':16s} {6.5:10.2f} {d['sec_per_doc']:11.2f} "
+              f"{d['sec_per_doc'] - 6.5:+8.2f}")
     print("=" * 62)
 
 
