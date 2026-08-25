@@ -88,8 +88,8 @@ def main():
     from distill.trace import summary as trace_summary
     t = trace_summary(op="extract")
     if t.get("n"):
-        print("
-" + "=" * 62)
+        print()
+        print("=" * 62)
         print("LATENCY AND COST  (traced extractions on this install)")
         print("=" * 62)
         print(f"   documents              {t['n']}  ({t['failures']} failed)")
