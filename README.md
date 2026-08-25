@@ -85,14 +85,14 @@ Because the pipeline is schema-driven, targeting a new document type is a config
 **Built:**
 - **Language:** Python 3.12
 - **Compute:** PyTorch + CUDA, local on an NVIDIA RTX 4070 (12GB), developed under WSL2
-- **Model:** Qwen2.5-VL-3B (zero-shot, no fine-tuning yet)
+- **Models:** Qwen2.5-VL-3B zero-shot (production path); a fine-tuned Donut, 40x faster but not yet as accurate
 - **Data:** WildReceipt (North American English receipts, MMOCR format), filtered to USD
 - **Schema and validation:** Pydantic, plus arithmetic and format checks
 - **Evaluation:** custom harness (field P/R/F1, auto-accept curve, calibration table)
 - **Service:** FastAPI backend, single-file review UI (no build step)
 - **CI:** GitHub Actions running the test suite on every push
 
-**Planned:** Donut fine-tune (scaffold in `finetune/`, untested), per-document cost and latency tracing, CI gate on accuracy regressions, Docker packaging, deployment.
+**Planned:** per-document cost and latency tracing, Docker packaging, deployment.
 
 ## Project status and roadmap
 
@@ -105,7 +105,9 @@ Because the pipeline is schema-driven, targeting a new document type is a config
   - [x] Human review queue (FastAPI + web UI, corrections persisted)
   - [x] CI running the test suite on every push
   - [ ] Calibration (ECE), per-document cost/latency tracing, CI gate on accuracy regressions
-- [ ] **Phase 3, polish:** deployment, fine-tuned small model, results writeup.
+- [ ] **Phase 3, polish:** deployment, results writeup.
+  - [x] Fine-tuned small model trained and evaluated (0.583 F1 at 0.16 s/doc; see the fine-tuning section below)
+  - [ ] Train it to parity with the zero-shot baseline, then deploy it CPU-only
 
 **Definition of done:** typed output, per-field confidence that predicts error, human review queue, full eval harness (field precision/recall/F1 + calibration + auto-accept rate), LLMOps (tracing, cost/latency, CI gate on regressions), and a deployed demo with a metrics-backed README. Everything but calibration, tracing, and deployment is in place.
 
@@ -126,6 +128,29 @@ Three numbers, because "accuracy" means three different things here. Reproduce t
 | Cost per document | $0.00 | $0.00 (local) |
 
 **Honest caveats.** The confidence numbers come from n=30 receipts (150 field decisions), so read them as ±5 points; the +40 point separation is far too wide for sample noise to threaten, but the point estimate will move. All figures are **field-level**, not document-level ("every field on this receipt is correct" is a much harder bar and would be substantially lower). The end-to-end number assumes the human reviewer is always right, so treat it as a ceiling. WildReceipt's own labels contain real errors, which caps measurable accuracy below what the model actually achieves: of the 5 confident-but-wrong fields in the last run, 2 were cases where the model was right and the dataset was wrong.
+
+### Fine-tuning experiment: a speed win, not an accuracy win
+
+The zero-shot VLM is 3B parameters and needs a GPU. A fine-tuned [Donut](https://github.com/clovaai/donut) is ~200M and runs on CPU, so the obvious move was to train one and get accuracy *and* deployability together. Half of that worked.
+
+| | zero-shot Qwen2.5-VL-3B | fine-tuned Donut (45 epochs) |
+| --- | --- | --- |
+| Overall field F1 | **0.795** | 0.583 |
+| store / date | 0.82 / 0.80 | 0.74 / 0.79 |
+| subtotal / tax / total | 0.74 / 0.84 / 0.78 | 0.61 / 0.09 / 0.45 |
+| Latency | 6.5 s/doc | **0.16 s/doc** (40x) |
+| Params | 3B, ~8GB VRAM | 200M, CPU-viable |
+
+**The honest read: it is undertrained, not incapable.** Accuracy was still climbing when the run ended (overall 0.497 at 20 epochs to 0.583 at 45; `total_price` went 0.056 to 0.453 as it finally learned to emit more than one price field per receipt) and the loss was still falling at 0.42. The untried lever is the LR warmup and cosine schedule the Donut paper uses, which this run skipped. Reaching 0.795 plausibly needs a few hundred more epochs, which is hours, not days, on a consumer GPU.
+
+Three bugs surfaced along the way, none of which the metrics alone would have revealed. Each was caught by printing the raw generated sequence instead of trusting an F1 of 0.000:
+
+1. **Label misalignment.** Targets begin with `<s_receipt>` and `decoder_start_token_id` was that same token, so passing only `labels` let the model derive decoder inputs by shifting right and prepending a *second* one. It was trained to predict `<s_receipt>` from `<s_receipt>` instead of the first real field. The raw output gave it away: correct content (`CHOEUN`, `13.99`) in scrambled structure.
+2. **Token imbalance.** With line items in the target, `<s_description>` outnumbered `<s_store_name>` 4,476 to 731, so the model learned the frequent tokens and never emitted a header field at all. Header-only targets fixed it, and match the scope the zero-shot baseline is scored on.
+3. **Brittle parsing.** The model emits `<s_subtotal_price> 55.96</s_total_price>` — right field, right value, wrong closing tag. A strict `<s_X>...</s_X>` regex discarded a correct extraction over a formatting artifact.
+
+Reproduce with `python -m finetune.prepare_data --no-items`, `python -m finetune.train_donut --epochs 20`, `python -m finetune.eval_donut --n 100`. Evaluation runs through the same `distill.score` as the baseline, so the two numbers are measured with one ruler.
+
 
 ## Getting started
 
