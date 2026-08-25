@@ -67,6 +67,13 @@ def status():
     return MODEL_STATE
 
 
+@app.get("/api/traces")
+def traces():
+    """Latency and cost over every extraction this install has run."""
+    from distill.trace import summary
+    return summary(op="extract")
+
+
 def _load_uploads() -> list:
     """Load the upload index, dropping entries whose image is gone.
 
@@ -210,14 +217,18 @@ def extract_upload(file: UploadFile = File(...), k: int = 3, items: bool = False
     from distill.extract import extract_samples
     from distill.schema import TARGET_FIELDS
     from distill.score import aggregate
+    from distill.trace import traced
     from distill.validate import apply_validation
     from run_confidence import vote_line_items
 
     t0 = time.time()
-    preds = extract_samples(img, k=max(1, min(k, 5)), items=items)
-    line_items, _sum, iconf = vote_line_items(preds) if items else ([], None, 0)
-    fields = apply_validation(aggregate(preds, TARGET_FIELDS),
-                              line_items=line_items if iconf >= 0.6 else None)
+    with traced("extract", k=k, items=items, bytes=len(blob)) as span:
+        preds = extract_samples(img, k=max(1, min(k, 5)), items=items)
+        line_items, _sum, iconf = vote_line_items(preds) if items else ([], None, 0)
+        fields = apply_validation(aggregate(preds, TARGET_FIELDS),
+                                  line_items=line_items if iconf >= 0.6 else None)
+        span["flagged"] = sum(1 for d in fields.values() if d["confidence"] < ACCEPT)
+        span["fields"] = len(fields)
     elapsed = round(time.time() - t0, 1)
 
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)

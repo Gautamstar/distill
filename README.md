@@ -91,6 +91,7 @@ Because the pipeline is schema-driven, targeting a new document type is a config
 - **Evaluation:** custom harness (field P/R/F1, auto-accept curve, calibration table)
 - **Service:** FastAPI backend, single-file review UI (no build step)
 - **CI:** GitHub Actions — unit tests plus a metrics regression gate that re-scores frozen predictions on every push
+- **Tracing:** per-document JSONL span log with latency percentiles, throughput, and the hosted-API counterfactual
 
 **Planned:** per-document cost and latency tracing, Docker packaging, deployment.
 
@@ -106,12 +107,12 @@ Because the pipeline is schema-driven, targeting a new document type is a config
   - [x] CI running the test suite on every push
   - [x] Calibration measured (ECE 0.115, MCE 0.275) with a reliability table and a recalibration fit
   - [x] CI gate on metric regressions (re-scores frozen predictions, fails the build if published numbers move)
-  - [ ] Per-document cost/latency tracing
+  - [x] Per-document latency and cost tracing (JSONL span log, `/api/traces`, percentiles and throughput)
 - [ ] **Phase 3, polish:** deployment, results writeup.
   - [x] Fine-tuned small model trained and evaluated (0.583 F1 at 0.16 s/doc; see the fine-tuning section below)
   - [ ] Train it to parity with the zero-shot baseline, then deploy it CPU-only
 
-**Definition of done:** typed output, per-field confidence that predicts error, human review queue, full eval harness (field precision/recall/F1 + calibration + auto-accept rate), LLMOps (tracing, cost/latency, CI gate on regressions), and a deployed demo with a metrics-backed README. Outstanding: cost/latency tracing and deployment.
+**Definition of done:** typed output, per-field confidence that predicts error, human review queue, full eval harness (field precision/recall/F1 + calibration + auto-accept rate), LLMOps (tracing, cost/latency, CI gate on regressions), and a deployed demo with a metrics-backed README. **Deployment is the only item outstanding.**
 
 ## Results
 
@@ -126,8 +127,8 @@ Three numbers, because "accuracy" means three different things here. Reproduce t
 | Other metric | Target | Current |
 | --- | --- | --- |
 | Confidence calibration (ECE) | < 0.05 | **0.115** — the signal separates well but is not well scaled; see below |
-| Latency per document | < 3s | 6.5s single pass; 20-50s at k=5 sampling |
-| Cost per document | $0.00 | $0.00 (local) |
+| Latency per document | < 3s | p50 **4.9s**, p95 12.4s at k=3 (traced over real extractions); 0.16s with the fine-tuned Donut |
+| Cost per document | $0.00 | $0.00 local — the same volume on a hosted vision API would bill ~$0.004/doc |
 
 **Honest caveats.** The confidence numbers come from n=30 receipts (150 field decisions), so read them as ±5 points; the +40 point separation is far too wide for sample noise to threaten, but the point estimate will move. All figures are **field-level**, not document-level ("every field on this receipt is correct" is a much harder bar and would be substantially lower). The end-to-end number assumes the human reviewer is always right, so treat it as a ceiling. WildReceipt's own labels contain real errors, which caps measurable accuracy below what the model actually achieves: of the 5 confident-but-wrong fields in the last run, 2 were cases where the model was right and the dataset was wrong.
 
@@ -191,6 +192,7 @@ python run_phase0.py --n 100                      # extraction baseline, prints 
 python run_confidence.py --n 30 --k 5             # confidence gating (add --no-items to run ~4x cheaper)
 python summarize_accuracy.py                      # all three headline numbers
 python run_calibration.py                         # reliability table + ECE/MCE
+curl localhost:8990/api/traces                    # latency percentiles + cost
 uvicorn review.app:app --port 8990                # review queue at localhost:8990
 pytest tests/ -q                                  # 111 tests
 ```
