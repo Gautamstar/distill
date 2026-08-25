@@ -13,9 +13,18 @@ ACCEPT = 0.999
 
 
 def raw_baseline(path=OUT / "phase0_results.json"):
+    """Re-score the saved predictions with the current scorer.
+
+    The `results` block inside the file was computed by whatever scorer existed
+    when the run happened; reading it back would report stale numbers after any
+    scoring change. Recomputing keeps every published figure consistent with the
+    code in the tree.
+    """
+    from distill.score import score
     d = json.load(open(path, encoding="utf-8"))
-    o = d["results"]["overall"]
-    return o, d["results"]["per_field"], len(d["rows"])
+    fields = ["store_name", "date", "subtotal_price", "tax_price", "total_price"]
+    r = score([x["pred"] for x in d["rows"]], [x["gold"] for x in d["rows"]], fields)
+    return r["overall"], r["per_field"], len(d["rows"])
 
 
 def gated(path):

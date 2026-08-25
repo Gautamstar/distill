@@ -39,7 +39,7 @@ Businesses receive large volumes of semi-structured documents where the importan
 - **Confidence that predicts error.** Per-field scores from self-consistency sampling plus validation. Fields the system trusts are 94.4% accurate; fields it flags are 54.1%, a 40-point separation that makes auto-accept safe.
 - **Human-in-the-loop.** A review queue surfaces only the uncertain fields, and corrections are persisted.
 - **Rigorous evaluation.** Field-level precision, recall, and F1 against gold labels, plus auto-accept coverage and slice accuracy. Every confident-but-wrong case was audited against the source image.
-- **Tested.** 86 unit tests, most written from real failures found in error analysis, run in CI on every push.
+- **Tested.** 111 tests, most written from real failures found in error analysis. CI also re-scores frozen predictions from real runs, so a change that silently moves a published number fails the build.
 - **Local-first.** Private by default and zero per-document cost, so large eval loops are free to run.
 
 ## How it works
@@ -90,7 +90,7 @@ Because the pipeline is schema-driven, targeting a new document type is a config
 - **Schema and validation:** Pydantic, plus arithmetic and format checks
 - **Evaluation:** custom harness (field P/R/F1, auto-accept curve, calibration table)
 - **Service:** FastAPI backend, single-file review UI (no build step)
-- **CI:** GitHub Actions running the test suite on every push
+- **CI:** GitHub Actions — unit tests plus a metrics regression gate that re-scores frozen predictions on every push
 
 **Planned:** per-document cost and latency tracing, Docker packaging, deployment.
 
@@ -105,12 +105,13 @@ Because the pipeline is schema-driven, targeting a new document type is a config
   - [x] Human review queue (FastAPI + web UI, corrections persisted)
   - [x] CI running the test suite on every push
   - [x] Calibration measured (ECE 0.115, MCE 0.275) with a reliability table and a recalibration fit
-  - [ ] Per-document cost/latency tracing, CI gate on accuracy regressions
+  - [x] CI gate on metric regressions (re-scores frozen predictions, fails the build if published numbers move)
+  - [ ] Per-document cost/latency tracing
 - [ ] **Phase 3, polish:** deployment, results writeup.
   - [x] Fine-tuned small model trained and evaluated (0.583 F1 at 0.16 s/doc; see the fine-tuning section below)
   - [ ] Train it to parity with the zero-shot baseline, then deploy it CPU-only
 
-**Definition of done:** typed output, per-field confidence that predicts error, human review queue, full eval harness (field precision/recall/F1 + calibration + auto-accept rate), LLMOps (tracing, cost/latency, CI gate on regressions), and a deployed demo with a metrics-backed README. Outstanding: cost/latency tracing, the CI regression gate, and deployment.
+**Definition of done:** typed output, per-field confidence that predicts error, human review queue, full eval harness (field precision/recall/F1 + calibration + auto-accept rate), LLMOps (tracing, cost/latency, CI gate on regressions), and a deployed demo with a metrics-backed README. Outstanding: cost/latency tracing and deployment.
 
 ## Results
 
@@ -118,7 +119,7 @@ Three numbers, because "accuracy" means three different things here. Reproduce t
 
 | Stage | Accuracy | Notes |
 | --- | --- | --- |
-| **1. Raw extraction** | **0.795** field F1 | Zero-shot, no gating. n=100 receipts, 5 fields (tax 0.84, store 0.82, date 0.80, total 0.78, subtotal 0.74) |
+| **1. Raw extraction** | **0.804** field F1 | Zero-shot, no gating. n=100 receipts, 5 fields (tax 0.85, store 0.82, date 0.80, total 0.80, subtotal 0.75) |
 | **2. Auto-accepted slice** | **94.4%** measured, ~96.6% audited | Covers 59.3% of fields. Flagged fields are only 54.1% accurate, a **+40 point separation** |
 | **3. End-to-end delivered** | **96.7%** | Auto-accept + human corrects the flagged 40.7%. The number that matters commercially |
 
@@ -136,7 +137,7 @@ The zero-shot VLM is 3B parameters and needs a GPU. A fine-tuned [Donut](https:/
 
 | | zero-shot Qwen2.5-VL-3B | fine-tuned Donut (45 epochs) |
 | --- | --- | --- |
-| Overall field F1 | **0.795** | 0.583 |
+| Overall field F1 | **0.804** | 0.583 |
 | store / date | 0.82 / 0.80 | 0.74 / 0.79 |
 | subtotal / tax / total | 0.74 / 0.84 / 0.78 | 0.61 / 0.09 / 0.45 |
 | Latency | 6.5 s/doc | **0.16 s/doc** (40x) |
@@ -191,7 +192,7 @@ python run_confidence.py --n 30 --k 5             # confidence gating (add --no-
 python summarize_accuracy.py                      # all three headline numbers
 python run_calibration.py                         # reliability table + ECE/MCE
 uvicorn review.app:app --port 8990                # review queue at localhost:8990
-pytest tests/ -q                                  # 86 tests
+pytest tests/ -q                                  # 111 tests
 ```
 
 Analysis helpers: `analyze_confidence.py` (calibration table + auto-accept curve), `list_confident_wrong.py` (the dangerous cases: confident and wrong), `analyze_errors.py`, `rescore.py` (re-score saved predictions after a scorer change, no GPU needed).

@@ -1,0 +1,1024 @@
+{
+ "rows": [
+  {
+   "fields": {
+    "store_name": {
+     "value": "CHO EUN KOREAN RESTAURANT",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "CHOEUN KOREANRESTAURANT"
+    },
+    "date": {
+     "value": "12/30/2016 FRI",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "12/30/2016FRI"
+    },
+    "subtotal_price": {
+     "value": "55.98",
+     "confidence": 1.0,
+     "correct": false,
+     "gold": "$55.96"
+    },
+    "tax_price": {
+     "value": "4.48",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "$4.48"
+    },
+    "total_price": {
+     "value": "60.46",
+     "confidence": 0.8,
+     "correct": false,
+     "gold": "$60.44"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "HATOFF'S GAS",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "HATOFF'SGAS,1"
+    },
+    "date": {
+     "value": "10/26/2018",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "10/26/2018"
+    },
+    "subtotal_price": {
+     "value": "6.69",
+     "confidence": 0.5,
+     "correct": false,
+     "gold": null
+    },
+    "tax_price": {
+     "value": null,
+     "confidence": 1.0,
+     "correct": true,
+     "gold": null
+    },
+    "total_price": {
+     "value": "6.69",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "$6.69"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "COSTCO WHOLESALE",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "COSTCO"
+    },
+    "date": {
+     "value": "08/02/10",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "08/02/10 8/02/2010"
+    },
+    "subtotal_price": {
+     "value": "58.22",
+     "confidence": 0.8,
+     "correct": true,
+     "gold": "58.22"
+    },
+    "tax_price": {
+     "value": "0.70",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": ".70"
+    },
+    "total_price": {
+     "value": "58.92",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "58.92"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "COSTCO WHOLESALE",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "COSTCO"
+    },
+    "date": {
+     "value": null,
+     "confidence": 0.8,
+     "correct": true,
+     "gold": null
+    },
+    "subtotal_price": {
+     "value": "70.34",
+     "confidence": 0.5,
+     "correct": false,
+     "gold": null
+    },
+    "tax_price": {
+     "value": null,
+     "confidence": 1.0,
+     "correct": true,
+     "gold": null
+    },
+    "total_price": {
+     "value": "70.34",
+     "confidence": 0.6,
+     "correct": true,
+     "gold": "70.34"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "COSTCO",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "COSTCO"
+    },
+    "date": {
+     "value": "90-102225",
+     "confidence": 0.5,
+     "correct": false,
+     "gold": null
+    },
+    "subtotal_price": {
+     "value": "192.53",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "192.53"
+    },
+    "tax_price": {
+     "value": "7.83",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "7.83"
+    },
+    "total_price": {
+     "value": "200.36",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "200.36"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "Costco Wholesale",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "COSTCO"
+    },
+    "date": {
+     "value": null,
+     "confidence": 0.8,
+     "correct": true,
+     "gold": null
+    },
+    "subtotal_price": {
+     "value": "70.34",
+     "confidence": 0.8,
+     "correct": false,
+     "gold": null
+    },
+    "tax_price": {
+     "value": null,
+     "confidence": 1.0,
+     "correct": true,
+     "gold": null
+    },
+    "total_price": {
+     "value": null,
+     "confidence": 0.6,
+     "correct": false,
+     "gold": "70.34"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "COSTCO WHOLESALE",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "COSTCO"
+    },
+    "date": {
+     "value": null,
+     "confidence": 1.0,
+     "correct": true,
+     "gold": null
+    },
+    "subtotal_price": {
+     "value": "0",
+     "confidence": 0.4,
+     "correct": false,
+     "gold": null
+    },
+    "tax_price": {
+     "value": "0",
+     "confidence": 0.4,
+     "correct": false,
+     "gold": null
+    },
+    "total_price": {
+     "value": "0",
+     "confidence": 0.2,
+     "correct": false,
+     "gold": null
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "The Royal Hotel",
+     "confidence": 1.0,
+     "correct": false,
+     "gold": "RoyalHotel TaxInvoice"
+    },
+    "date": {
+     "value": "30-Dec-2016",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "30-DEC-2016"
+    },
+    "subtotal_price": {
+     "value": "857.60",
+     "confidence": 0.2,
+     "correct": false,
+     "gold": "$69.60"
+    },
+    "tax_price": {
+     "value": "84.33",
+     "confidence": 0.4,
+     "correct": false,
+     "gold": "$6.33"
+    },
+    "total_price": {
+     "value": "865.60",
+     "confidence": 0.2,
+     "correct": false,
+     "gold": "$69.60"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "Aqua",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "Aqwa aqua"
+    },
+    "date": {
+     "value": "27/Dec/16",
+     "confidence": 0.6,
+     "correct": true,
+     "gold": "27Dec\u00b416"
+    },
+    "subtotal_price": {
+     "value": "36.00",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "36.00"
+    },
+    "tax_price": {
+     "value": "40.50",
+     "confidence": 0.5,
+     "correct": false,
+     "gold": "4.50"
+    },
+    "total_price": {
+     "value": "40.50",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "40.50"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "Achiote Puerto Rican Rest",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "AchiotePuertoRicanRest"
+    },
+    "date": {
+     "value": null,
+     "confidence": 0.6,
+     "correct": true,
+     "gold": null
+    },
+    "subtotal_price": {
+     "value": "7.98",
+     "confidence": 0.5,
+     "correct": false,
+     "gold": null
+    },
+    "tax_price": {
+     "value": "1.90",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "1.90"
+    },
+    "total_price": {
+     "value": "31.05",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "$31.05"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "ROCCO'S NY PIZZA PASTA",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "ROCCO'SNYPIZZAPASTA ROCCO'SNYPIZZAPASTA"
+    },
+    "date": {
+     "value": "07/05/2017",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "07/05/2017 07/05/2017"
+    },
+    "subtotal_price": {
+     "value": "28.12",
+     "confidence": 0.4,
+     "correct": false,
+     "gold": "$25.98"
+    },
+    "tax_price": {
+     "value": "$2.14",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "$2.14"
+    },
+    "total_price": {
+     "value": "$28.12",
+     "confidence": 0.5,
+     "correct": false,
+     "gold": null
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "MING'S Chinese-American Cuisine",
+     "confidence": 0.4,
+     "correct": true,
+     "gold": "MING'S"
+    },
+    "date": {
+     "value": "08-18-2013",
+     "confidence": 0.6,
+     "correct": false,
+     "gold": "06/08-2013"
+    },
+    "subtotal_price": {
+     "value": "65.50",
+     "confidence": 0.4,
+     "correct": false,
+     "gold": "66.50"
+    },
+    "tax_price": {
+     "value": "6.45",
+     "confidence": 0.4,
+     "correct": false,
+     "gold": "6.65"
+    },
+    "total_price": {
+     "value": "65.12",
+     "confidence": 0.4,
+     "correct": false,
+     "gold": "85.12"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "HOME HOUSE",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "HOMEHOUSE"
+    },
+    "date": {
+     "value": "TIME 22:55",
+     "confidence": 0.5,
+     "correct": false,
+     "gold": null
+    },
+    "subtotal_price": {
+     "value": "100.75",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "100.75"
+    },
+    "tax_price": {
+     "value": "78.00",
+     "confidence": 0.5,
+     "correct": false,
+     "gold": "11.63"
+    },
+    "total_price": {
+     "value": "113.35",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "113.35"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "PIZZA HUT GIANT PUCHONG KINRARA",
+     "confidence": 0.6,
+     "correct": false,
+     "gold": "PIZZRHUT"
+    },
+    "date": {
+     "value": "25 Dec 13",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "25Dec13 25Dec13"
+    },
+    "subtotal_price": {
+     "value": "55.10",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "55.10"
+    },
+    "tax_price": {
+     "value": "3.31",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "3.31"
+    },
+    "total_price": {
+     "value": "63.92",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "63.92"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "BIENVENUE A DISNEYLAND PARIS",
+     "confidence": 0.6,
+     "correct": true,
+     "gold": "BIENVENUEADISNEYLANDPARIS"
+    },
+    "date": {
+     "value": "25/10/2017",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "25/10/2017 25/10/2017"
+    },
+    "subtotal_price": {
+     "value": "5.58",
+     "confidence": 1.0,
+     "correct": false,
+     "gold": null
+    },
+    "tax_price": {
+     "value": "0.30",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "0.30"
+    },
+    "total_price": {
+     "value": "5.88",
+     "confidence": 1.0,
+     "correct": false,
+     "gold": "5.58"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "India Palace",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "INDIAPALACE"
+    },
+    "date": {
+     "value": "26/03/2015",
+     "confidence": 0.6,
+     "correct": false,
+     "gold": "26/03/2016"
+    },
+    "subtotal_price": {
+     "value": "28.00",
+     "confidence": 0.6,
+     "correct": false,
+     "gold": null
+    },
+    "tax_price": {
+     "value": null,
+     "confidence": 0.8,
+     "correct": true,
+     "gold": null
+    },
+    "total_price": {
+     "value": "33.00",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "33.00"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "SPEEDWAY",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "SPEEDWAY0006661"
+    },
+    "date": {
+     "value": "5/19/2017",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "5/19/2017"
+    },
+    "subtotal_price": {
+     "value": "26.09",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "$26.09"
+    },
+    "tax_price": {
+     "value": "0.00",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "$0.00"
+    },
+    "total_price": {
+     "value": "26.09",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "$26.09"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "MASTORIS DINER",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "MASTORISDINER"
+    },
+    "date": {
+     "value": "04NOV'17",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "04NOV'17"
+    },
+    "subtotal_price": {
+     "value": "23.96",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "23.96"
+    },
+    "tax_price": {
+     "value": "1.65",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "1.65"
+    },
+    "total_price": {
+     "value": "25.61",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "25.61"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "metro",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "metro"
+    },
+    "date": {
+     "value": "2/25/12",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "2/25/12"
+    },
+    "subtotal_price": {
+     "value": "2.76",
+     "confidence": 0.5,
+     "correct": false,
+     "gold": null
+    },
+    "tax_price": {
+     "value": ".26",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": ".26"
+    },
+    "total_price": {
+     "value": "2.24",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "2.24"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "GASTROBAR EL GALLO AZUL",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "GASTROBAREL GALLO AZUL"
+    },
+    "date": {
+     "value": "14-11-2013",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "14-11-2013"
+    },
+    "subtotal_price": {
+     "value": "20,90",
+     "confidence": 0.5,
+     "correct": false,
+     "gold": null
+    },
+    "tax_price": {
+     "value": null,
+     "confidence": 1.0,
+     "correct": true,
+     "gold": null
+    },
+    "total_price": {
+     "value": "20,90",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "20.90"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "OYAJI RESTAURANT",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "OYAJIRESTAURANT"
+    },
+    "date": {
+     "value": "8/9/2008",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "8/9/2008"
+    },
+    "subtotal_price": {
+     "value": "79.50",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "79.50"
+    },
+    "tax_price": {
+     "value": "6.76",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "6.76"
+    },
+    "total_price": {
+     "value": "86.26",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "86.26"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "WAL-MART",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "WAL\u2605MART\u00ae"
+    },
+    "date": {
+     "value": null,
+     "confidence": 1.0,
+     "correct": true,
+     "gold": null
+    },
+    "subtotal_price": {
+     "value": "22.04",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "22.04"
+    },
+    "tax_price": {
+     "value": "0.47",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "0.47"
+    },
+    "total_price": {
+     "value": "22.51",
+     "confidence": 1.0,
+     "correct": false,
+     "gold": null
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "Supreme NY",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "SUPREMENY"
+    },
+    "date": {
+     "value": "27/04/2018",
+     "confidence": 0.2,
+     "correct": false,
+     "gold": "3/1/2018"
+    },
+    "subtotal_price": {
+     "value": "104.00",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "104.00"
+    },
+    "tax_price": {
+     "value": "1.42",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "1.42"
+    },
+    "total_price": {
+     "value": "105.42",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "105.42"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "Liquor Library",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "LiquorLibrary"
+    },
+    "date": {
+     "value": "11/21/2014",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "11/21/2014"
+    },
+    "subtotal_price": {
+     "value": "60.93",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "60.93"
+    },
+    "tax_price": {
+     "value": "4.21",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "4.21"
+    },
+    "total_price": {
+     "value": "66.18",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "66.18"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "SHIMBASHI SOBA",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "SHIMBASHISOBA"
+    },
+    "date": {
+     "value": "02/03/2011",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "02/03/2011"
+    },
+    "subtotal_price": {
+     "value": "100.30",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "100.30"
+    },
+    "tax_price": {
+     "value": "7.72",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "7.72"
+    },
+    "total_price": {
+     "value": "118.05",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "118.05"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "Max's Cafe",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "Max'sCafe"
+    },
+    "date": {
+     "value": "Jul19'14",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "Jul19'14"
+    },
+    "subtotal_price": {
+     "value": "24.45",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "24.45"
+    },
+    "tax_price": {
+     "value": "2.32",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "2.32"
+    },
+    "total_price": {
+     "value": "26.77",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "26.77"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "Max's Cafe",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "Max'sCafe"
+    },
+    "date": {
+     "value": "Jul19'14",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "Jul19'14"
+    },
+    "subtotal_price": {
+     "value": "24.45",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "24.45"
+    },
+    "tax_price": {
+     "value": "2.32",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "2.32"
+    },
+    "total_price": {
+     "value": "26.77",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "26.77"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "Bachmann Japanese Restaurant @ IDN Orchard",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "BachmannJapaneseRestaurant"
+    },
+    "date": {
+     "value": "26/09/2011",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "26/09/2011 26/09/2011"
+    },
+    "subtotal_price": {
+     "value": "36.50",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "$36.50"
+    },
+    "tax_price": {
+     "value": "2.81",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "$2.81"
+    },
+    "total_price": {
+     "value": "42.95",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "$42.95"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "All Seasons Car Wash & Lube",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "AllSeasonsCarWash&Lube"
+    },
+    "date": {
+     "value": "09/13/15",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "09/13/15,"
+    },
+    "subtotal_price": {
+     "value": "0.00",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "0.00"
+    },
+    "tax_price": {
+     "value": "0.00",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "0.00"
+    },
+    "total_price": {
+     "value": "0.00",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "0.00"
+    }
+   }
+  },
+  {
+   "fields": {
+    "store_name": {
+     "value": "Liberty Tree Tavern",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "LibertyTreeTavern"
+    },
+    "date": {
+     "value": "1/13/2008",
+     "confidence": 1.0,
+     "correct": true,
+     "gold": "1/13/2008 1/13/2008"
+    },
+    "subtotal_price": {
+     "value": "37.47",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "37.47"
+    },
+    "tax_price": {
+     "value": "2.44",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "2.44"
+    },
+    "total_price": {
+     "value": "48.34",
+     "confidence": 0.5,
+     "correct": true,
+     "gold": "48.34"
+    }
+   }
+  }
+ ]
+}
