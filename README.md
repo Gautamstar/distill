@@ -109,8 +109,9 @@ Because the pipeline is schema-driven, targeting a new document type is a config
   - [x] CI gate on metric regressions (re-scores frozen predictions, fails the build if published numbers move)
   - [x] Per-document latency and cost tracing (JSONL span log, `/api/traces`, percentiles and throughput)
 - [ ] **Phase 3, polish:** deployment, results writeup.
-  - [x] Fine-tuned small model trained and evaluated (0.583 F1 at 0.16 s/doc; see the fine-tuning section below)
-  - [ ] Train it to parity with the zero-shot baseline, then deploy it CPU-only
+  - [x] Fine-tuned small model trained and evaluated (0.683 F1; validation converged, so the residual gap is data, not epochs)
+  - [x] CPU serving backend, Dockerfile, and AWS deployment guide (`deploy/`)
+  - [ ] Deploy it
 
 **Definition of done:** typed output, per-field confidence that predicts error, human review queue, full eval harness (field precision/recall/F1 + calibration + auto-accept rate), LLMOps (tracing, cost/latency, CI gate on regressions), and a deployed demo with a metrics-backed README. **Deployment is the only item outstanding.**
 
@@ -127,33 +128,74 @@ Three numbers, because "accuracy" means three different things here. Reproduce t
 | Other metric | Target | Current |
 | --- | --- | --- |
 | Confidence calibration (ECE) | < 0.05 | **0.115** — the signal separates well but is not well scaled; see below |
-| Latency per document | < 3s | p50 **4.9s**, p95 12.4s at k=3 (traced over real extractions); 0.16s with the fine-tuned Donut |
+| Latency per document | < 3s | p50 **4.9s**, p95 12.4s at k=3 (traced); Donut 0.16s on GPU, ~5.0s on CPU |
 | Cost per document | $0.00 | $0.00 local — the same volume on a hosted vision API would bill ~$0.004/doc |
 
 **Honest caveats.** The confidence numbers come from n=30 receipts (150 field decisions), so read them as ±5 points; the +40 point separation is far too wide for sample noise to threaten, but the point estimate will move. All figures are **field-level**, not document-level ("every field on this receipt is correct" is a much harder bar and would be substantially lower). The end-to-end number assumes the human reviewer is always right, so treat it as a ceiling. WildReceipt's own labels contain real errors, which caps measurable accuracy below what the model actually achieves: of the 5 confident-but-wrong fields in the last run, 2 were cases where the model was right and the dataset was wrong.
 
-### Fine-tuning experiment: a speed win, not an accuracy win
+### Fine-tuning: how close a 200M model gets, and what stops it
 
-The zero-shot VLM is 3B parameters and needs a GPU. A fine-tuned [Donut](https://github.com/clovaai/donut) is ~200M and runs on CPU, so the obvious move was to train one and get accuracy *and* deployability together. Half of that worked.
+The zero-shot VLM is 3B parameters and needs a GPU, which is what makes hosting
+expensive. A fine-tuned [Donut](https://github.com/clovaai/donut) is ~200M and
+needs no GPU at all, so getting it to parity would make the whole system free
+to run. It does not get there. Reproduce with `python compare_models.py`:
 
-| | zero-shot Qwen2.5-VL-3B | fine-tuned Donut (45 epochs) |
+| field | zero-shot Qwen2.5-VL-3B | fine-tuned Donut |
 | --- | --- | --- |
-| Overall field F1 | **0.804** | 0.583 |
-| store / date | 0.82 / 0.80 | 0.74 / 0.79 |
-| subtotal / tax / total | 0.74 / 0.84 / 0.78 | 0.61 / 0.09 / 0.45 |
-| Latency | 6.5 s/doc | **0.16 s/doc** (40x) |
-| Params | 3B, ~8GB VRAM | 200M, CPU-viable |
+| store_name | 0.820 | 0.740 |
+| date | 0.802 | 0.789 |
+| subtotal_price | 0.747 | 0.655 |
+| tax_price | 0.852 | **0.540** |
+| total_price | 0.800 | 0.649 |
+| **overall F1** | **0.804** | **0.683** |
+| latency | 6.5 s/doc (GPU) | 0.21 s/doc GPU, ~5.0 s/doc CPU |
+| hardware | ~8GB VRAM | none required |
 
-**The honest read: it is undertrained, not incapable.** Accuracy was still climbing when the run ended (overall 0.497 at 20 epochs to 0.583 at 45; `total_price` went 0.056 to 0.453 as it finally learned to emit more than one price field per receipt) and the loss was still falling at 0.42. The untried lever is the LR warmup and cosine schedule the Donut paper uses, which this run skipped. Reaching 0.795 plausibly needs a few hundred more epochs, which is hours, not days, on a consumer GPU.
+Same 100-receipt split, same scorer, same five fields. That last point matters:
+an earlier comparison scored Donut on six fields (including `tip_price`, which
+appears in 61 of 1,112 training receipts and which it never learns) against a
+five-field baseline, which understated it by about four points. Comparisons are
+only worth as much as their alignment.
 
-Three bugs surfaced along the way, none of which the metrics alone would have revealed. Each was caught by printing the raw generated sequence instead of trusting an F1 of 0.000:
+**What moved it, and what did not.** Training longer did nothing — the first
+runs were undertrained, but so was the diagnosis. Adding held-out validation
+showed the real problem: training loss reached 0.42 while validation sat near
+0.78, so the model was memorising 1,112 receipts. Three changes took it from
+0.583 to 0.683:
 
-1. **Label misalignment.** Targets begin with `<s_receipt>` and `decoder_start_token_id` was that same token, so passing only `labels` let the model derive decoder inputs by shifting right and prepending a *second* one. It was trained to predict `<s_receipt>` from `<s_receipt>` instead of the first real field. The raw output gave it away: correct content (`CHOEUN`, `13.99`) in scrambled structure.
-2. **Token imbalance.** With line items in the target, `<s_description>` outnumbered `<s_store_name>` 4,476 to 731, so the model learned the frequent tokens and never emitted a header field at all. Header-only targets fixed it, and match the scope the zero-shot baseline is scored on.
-3. **Brittle parsing.** The model emits `<s_subtotal_price> 55.96</s_total_price>` — right field, right value, wrong closing tag. A strict `<s_X>...</s_X>` regex discarded a correct extraction over a formatting artifact.
+- **augmentation** — slight rotation, exposure and contrast jitter, asymmetric
+  padding; the distortions a phone camera actually introduces
+- **cosine LR with warmup**, the schedule the Donut paper uses and which the
+  earlier runs skipped
+- **validation-gated checkpointing**, so the model that ships is the one that
+  generalised best rather than the one that trained last
 
-Reproduce with `python -m finetune.prepare_data --no-items`, `python -m finetune.train_donut --epochs 20`, `python -m finetune.eval_donut --n 100`. Evaluation runs through the same `distill.score` as the baseline, so the two numbers are measured with one ruler.
+Validation then converged at 0.685 and stopped moving. That is the finding: the
+remaining 0.121 is **a data problem, not a training problem.** More epochs
+memorise harder; closing it needs more receipts, or a larger base model.
 
+**Where that leaves deployment.** The gap is real but it is not the whole
+picture, because this system is built so the model does not have to be right —
+it has to know when it might be wrong. A less accurate model with working
+confidence gating routes more fields to a human and still delivers high
+accuracy; it just costs more review time. That turns the choice into a
+quantified tradeoff rather than a blocker: pay ~$380/month for a GPU instance
+and less review, or ~$15/month on CPU and more of it.
+
+Three bugs surfaced along the way, each caught by printing raw generations
+rather than trusting an F1 of 0.000:
+
+1. **Label misalignment.** Targets begin with `<s_receipt>` and
+   `decoder_start_token_id` was that same token, so passing only `labels` let
+   the model shift them right and prepend a *second* one — training it to
+   predict `<s_receipt>` from `<s_receipt>`. The output gave it away: correct
+   content (`CHOEUN`, `13.99`) in scrambled structure.
+2. **Token imbalance.** With line items in the target, `<s_description>`
+   outnumbered `<s_store_name>` 4,476 to 731, so the model learned the frequent
+   tokens and never emitted a header field at all.
+3. **Brittle parsing.** The model emits `<s_subtotal_price> 55.96</s_total_price>`
+   — right field, right value, wrong closing tag. A strict `<s_X>...</s_X>`
+   regex discarded a correct extraction over a formatting artifact.
 
 ### Is the confidence *calibrated*, not just separating?
 

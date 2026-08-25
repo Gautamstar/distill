@@ -14,6 +14,7 @@ Run:  uvicorn review.app:app --port 8990
 """
 import io
 import json
+import os
 import threading
 import time
 import uuid
@@ -39,8 +40,18 @@ ALLOWED = {"image/jpeg", "image/png", "image/webp"}
 
 app = FastAPI(title="Distill review queue")
 
-with open(RESULTS, encoding="utf-8") as fh:
-    ROWS = json.load(fh)["rows"]
+# A deployed container carries the app and the model, not the dataset. Missing
+# eval data degrades to an upload-only demo rather than failing to boot.
+if RESULTS.exists():
+    with open(RESULTS, encoding="utf-8") as fh:
+        ROWS = json.load(fh)["rows"]
+else:
+    ROWS = []
+
+# Which extraction backend serves /api/extract. The Donut path is ~200M params
+# and runs on CPU, which is what makes a free always-on deployment possible;
+# the VLM path is more accurate but needs a GPU.
+BACKEND = os.environ.get("DISTILL_BACKEND", "vlm").lower()
 
 # Importing torch and loading the VLM costs ~60s. Doing it on the first upload
 # makes that request look hung, so warm it in the background at startup: the
@@ -48,11 +59,19 @@ with open(RESULTS, encoding="utf-8") as fh:
 MODEL_STATE = {"ready": False, "error": None}
 
 
+def _backend():
+    if BACKEND == "donut":
+        from distill import extract_donut as impl
+    else:
+        from distill import extract as impl
+    return impl
+
+
 def _warm():
     try:
-        from distill.extract import _load
-        _load()
+        _backend()._load()
         MODEL_STATE["ready"] = True
+        MODEL_STATE["backend"] = BACKEND
     except Exception as exc:                      # keep serving the eval queue
         MODEL_STATE["error"] = f"{type(exc).__name__}: {exc}"
 
@@ -64,7 +83,13 @@ def _startup():
 
 @app.get("/api/status")
 def status():
-    return MODEL_STATE
+    return {**MODEL_STATE, "backend": BACKEND}
+
+
+@app.get("/healthz")
+def healthz():
+    """Liveness for a container orchestrator: up before the model is warm."""
+    return {"ok": True, "model_ready": MODEL_STATE["ready"]}
 
 
 @app.get("/api/traces")
@@ -214,7 +239,7 @@ def extract_upload(file: UploadFile = File(...), k: int = 3, items: bool = False
         raise HTTPException(400, "could not decode image")
 
     # Imported lazily so the server starts without touching CUDA.
-    from distill.extract import extract_samples
+    extract_samples = _backend().extract_samples
     from distill.schema import TARGET_FIELDS
     from distill.score import aggregate
     from distill.trace import traced
