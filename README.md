@@ -39,8 +39,9 @@ Businesses receive large volumes of semi-structured documents where the importan
 - **Confidence that predicts error.** Per-field scores from self-consistency sampling plus validation. Fields the system trusts are 94.4% accurate; fields it flags are 54.1%, a 40-point separation that makes auto-accept safe.
 - **Human-in-the-loop.** A review queue surfaces only the uncertain fields, and corrections are persisted.
 - **Rigorous evaluation.** Field-level precision, recall, and F1 against gold labels, plus auto-accept coverage and slice accuracy. Every confident-but-wrong case was audited against the source image.
-- **Tested.** 111 tests, most written from real failures found in error analysis. CI also re-scores frozen predictions from real runs, so a change that silently moves a published number fails the build.
+- **Tested.** 175 tests, most written from real failures found in error analysis. CI also re-scores frozen predictions from real runs, so a change that silently moves a published number fails the build.
 - **Local-first.** Private by default and zero per-document cost, so large eval loops are free to run.
+- **Tunable.** The accuracy/automation tradeoff is an explicit dial (`DISTILL_BLAME`) with its exchange rate measured, not a constant buried in validation code.
 
 ## How it works
 
@@ -85,7 +86,7 @@ Because the pipeline is schema-driven, targeting a new document type is a config
 **Built:**
 - **Language:** Python 3.12
 - **Compute:** PyTorch + CUDA, local on an NVIDIA RTX 4070 (12GB), developed under WSL2
-- **Models:** Qwen2.5-VL-3B zero-shot (production path); a fine-tuned Donut, 40x faster but not yet as accurate
+- **Models:** Qwen2.5-VL-3B zero-shot (0.804 F1, needs a GPU); a fine-tuned Donut (0.683 F1, runs on CPU)
 - **Data:** WildReceipt (North American English receipts, MMOCR format), filtered to USD
 - **Schema and validation:** Pydantic, plus arithmetic and format checks
 - **Evaluation:** custom harness (field P/R/F1, auto-accept curve, calibration table)
@@ -93,7 +94,7 @@ Because the pipeline is schema-driven, targeting a new document type is a config
 - **CI:** GitHub Actions — unit tests plus a metrics regression gate that re-scores frozen predictions on every push
 - **Tracing:** per-document JSONL span log with latency percentiles, throughput, and the hosted-API counterfactual
 
-**Planned:** per-document cost and latency tracing, Docker packaging, deployment.
+**Planned:** deployment. Everything else in the definition of done is built and measured.
 
 ## Project status and roadmap
 
@@ -275,7 +276,7 @@ python run_calibration.py                         # reliability table + ECE/MCE
 python simulate_policies.py                       # coverage vs accuracy dial
 curl localhost:8990/api/traces                    # latency percentiles + cost
 uvicorn review.app:app --port 8990                # review queue at localhost:8990
-pytest tests/ -q                                  # 111 tests
+pytest tests/ -q                                  # 175 tests
 ```
 
 Analysis helpers: `analyze_confidence.py` (calibration table + auto-accept curve), `list_confident_wrong.py` (the dangerous cases: confident and wrong), `analyze_errors.py`, `rescore.py` (re-score saved predictions after a scorer change, no GPU needed).
