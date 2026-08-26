@@ -197,6 +197,44 @@ rather than trusting an F1 of 0.000:
    — right field, right value, wrong closing tag. A strict `<s_X>...</s_X>`
    regex discarded a correct extraction over a formatting artifact.
 
+### The coverage dial: what more automation actually costs
+
+Auto-accept covers 59.3% of fields. The obvious question is why not more, and
+calibration answered it: fields capped by the arithmetic check are **70.6%
+correct**, so the check routes work to humans that humans did not need to see.
+
+That looked like waste. Measuring it showed it is a price. When
+`subtotal + tax = total` fails, one of those fields is wrong — but which?
+
+| field | capped | wrongly capped |
+| --- | --- | --- |
+| subtotal | 12 | 7 (58%) |
+| tax | 10 | 8 (80%) |
+| total | 10 | 9 (90%) |
+
+The culprit is overwhelmingly the **subtotal** — the model invents one when the
+receipt has none, or misreads it. Tax and total are read off labelled lines and
+are usually collateral. So narrowing the blame frees real coverage, and
+`python simulate_policies.py` prices the exchange:
+
+| blame policy | coverage | accepted accuracy | delivered |
+| --- | --- | --- | --- |
+| **all four (default)** | 59.3% | 94.4% | **96.7%** |
+| subtotal + total | 66.0% | 92.9% | 95.3% |
+| subtotal only | 72.7% | 92.7% | 94.7% |
+| no arithmetic gate | 80.7% | 89.3% | 91.3% |
+
+**There is no free lunch.** Every point of coverage costs delivered accuracy,
+because the fields being freed include real errors that then ship unreviewed.
+Neither sampling disagreement (present in 25% of true errors but also 4% of
+collateral) nor the size of the arithmetic gap separates them cleanly.
+
+So this is a dial, not a bug. It ships as `DISTILL_BLAME`, defaulting to the
+conservative setting, because the right point on that curve depends on what an
+operator's errors cost — and that is their call to make, not a constant to bury
+in the validation code.
+
+
 ### Is the confidence *calibrated*, not just separating?
 
 Separation says the signal ranks correctly; calibration asks whether the number means what it says. Run `python run_calibration.py`:
@@ -234,6 +272,7 @@ python run_phase0.py --n 100                      # extraction baseline, prints 
 python run_confidence.py --n 30 --k 5             # confidence gating (add --no-items to run ~4x cheaper)
 python summarize_accuracy.py                      # all three headline numbers
 python run_calibration.py                         # reliability table + ECE/MCE
+python simulate_policies.py                       # coverage vs accuracy dial
 curl localhost:8990/api/traces                    # latency percentiles + cost
 uvicorn review.app:app --port 8990                # review queue at localhost:8990
 pytest tests/ -q                                  # 111 tests
